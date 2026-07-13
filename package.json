@@ -1,0 +1,36 @@
+{
+  "name": "fixhub",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Hyperlocal Electrical & Home Appliance Repair Platform",
+  "scripts": {
+    "dev:backend": "pnpm --filter @fixhub/backend dev",
+    "dev:admin": "pnpm --filter @fixhub/admin dev",
+    "build:backend": "pnpm --filter @fixhub/backend build",
+    "build:admin": "pnpm --filter @fixhub/admin build",
+    "build:shared": "pnpm --filter @fixhub/shared build",
+    "lint": "pnpm -r lint",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "db:generate": "pnpm --filter @fixhub/backend prisma:generate",
+    "db:migrate": "pnpm --filter @fixhub/backend prisma:migrate",
+    "db:seed": "pnpm --filter @fixhub/backend prisma:seed",
+    "db:studio": "pnpm --filter @fixhub/backend prisma:studio",
+    "docker:dev": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:prod": "docker compose -f docker-compose.prod.yml up -d",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.6.1",
+    "@commitlint/config-conventional": "^19.6.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.4.3",
+    "prettier": "^3.4.2"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.15.4"
+}

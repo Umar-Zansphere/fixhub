@@ -1,0 +1,11 @@
+export enum MediaType {
+  IMAGE = 'IMAGE',
+  VIDEO = 'VIDEO',
+  DOCUMENT = 'DOCUMENT',
+}
+
+export enum MediaUploadPhase {
+  BEFORE_SERVICE = 'BEFORE_SERVICE',
+  DURING_SERVICE = 'DURING_SERVICE',
+  AFTER_SERVICE = 'AFTER_SERVICE',
+}
