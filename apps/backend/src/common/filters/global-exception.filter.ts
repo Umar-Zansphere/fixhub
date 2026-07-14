@@ -1,4 +1,4 @@
-import { ErrorCodes } from '@fixhub/shared';
+import { type ErrorCode,ErrorCodes } from '@fixhub/shared';
 import {
   ArgumentsHost,
   Catch,
@@ -20,7 +20,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
     let message = 'Internal server error';
-    let errorCode = ErrorCodes.INTERNAL_ERROR;
+    let errorCode: ErrorCode = ErrorCodes.INTERNAL_ERROR;
     let errors: Record<string, string[]> | undefined;
 
     if (exception instanceof HttpException) {
@@ -32,7 +32,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       } else if (typeof exceptionResponse === 'object') {
         const responseObj = exceptionResponse as Record<string, unknown>;
         message = (responseObj.message as string) || message;
-        errorCode = (responseObj.errorCode as string) || this.getErrorCodeFromStatus(status);
+        errorCode = (responseObj.errorCode as ErrorCode) || this.getErrorCodeFromStatus(status);
 
         // Handle class-validator errors
         if (Array.isArray(responseObj.message)) {
@@ -64,7 +64,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     });
   }
 
-  private getErrorCodeFromStatus(status: number): string {
+  private getErrorCodeFromStatus(status: number): ErrorCode {
     switch (status) {
       case 400:
         return ErrorCodes.VALIDATION_ERROR;

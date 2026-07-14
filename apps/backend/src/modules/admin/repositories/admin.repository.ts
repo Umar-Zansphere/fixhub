@@ -12,7 +12,7 @@ export class AdminRepository {
       this.prisma.customer.count(),
       this.prisma.technician.count(),
       this.prisma.booking.count({
-        where: { status: { in: ['PENDING', 'CONFIRMED', 'TECHNICIAN_ASSIGNED', 'IN_PROGRESS'] } },
+        where: { status: { in: ['PENDING_PAYMENT', 'CONFIRMED', 'ASSIGNED', 'IN_PROGRESS'] } },
       }),
     ]);
 

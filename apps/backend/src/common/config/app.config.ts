@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsIn,IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 
 export class AppConfig {
   @IsString()
@@ -137,3 +137,5 @@ export const appConfig = () => ({
     limit: parseInt(process.env.THROTTLE_LIMIT || '100', 10),
   },
 });
+
+export type AppConfigValues = ReturnType<typeof appConfig>;
