@@ -1,5 +1,5 @@
-import { Type } from 'class-transformer';
-import { IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { plainToInstance, Type } from 'class-transformer';
+import { IsInt, IsOptional, IsString, Max, Min, validateSync } from 'class-validator';
 
 export class AppConfig {
   @IsString()
@@ -139,3 +139,43 @@ export const appConfig = () => ({
 });
 
 export type AppConfigValues = ReturnType<typeof appConfig>;
+
+export function validateConfig(config: Record<string, unknown>): AppConfig {
+  const validatedConfig = plainToInstance(AppConfig, {
+    NODE_ENV: config.NODE_ENV || 'development',
+    APP_PORT: config.APP_PORT || 3000,
+    DATABASE_URL: config.DATABASE_URL,
+    REDIS_HOST: config.REDIS_HOST || 'localhost',
+    REDIS_PORT: config.REDIS_PORT || 6379,
+    REDIS_PASSWORD: config.REDIS_PASSWORD,
+    JWT_ACCESS_SECRET: config.JWT_ACCESS_SECRET,
+    JWT_ACCESS_EXPIRATION: config.JWT_ACCESS_EXPIRATION || '15m',
+    JWT_REFRESH_SECRET: config.JWT_REFRESH_SECRET,
+    JWT_REFRESH_EXPIRATION: config.JWT_REFRESH_EXPIRATION || '7d',
+    AWS_REGION: config.AWS_REGION || 'ap-south-1',
+    AWS_ACCESS_KEY_ID: config.AWS_ACCESS_KEY_ID,
+    AWS_SECRET_ACCESS_KEY: config.AWS_SECRET_ACCESS_KEY,
+    AWS_S3_BUCKET: config.AWS_S3_BUCKET || 'fixhub-uploads',
+    RAZORPAY_KEY_ID: config.RAZORPAY_KEY_ID,
+    RAZORPAY_KEY_SECRET: config.RAZORPAY_KEY_SECRET,
+    RAZORPAY_WEBHOOK_SECRET: config.RAZORPAY_WEBHOOK_SECRET,
+    FIREBASE_PROJECT_ID: config.FIREBASE_PROJECT_ID,
+    CORS_ORIGINS: config.CORS_ORIGINS,
+    THROTTLE_TTL: config.THROTTLE_TTL || 60,
+    THROTTLE_LIMIT: config.THROTTLE_LIMIT || 100,
+  });
+
+  const errors = validateSync(validatedConfig, {
+    skipMissingProperties: false,
+  });
+
+  if (errors.length > 0) {
+    const messages = errors
+      .flatMap((error) => Object.values(error.constraints ?? {}).map((message) => `${error.property}: ${message}`))
+      .join('; ');
+
+    throw new Error(`Invalid environment configuration: ${messages}`);
+  }
+
+  return validatedConfig;
+}

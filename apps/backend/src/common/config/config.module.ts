@@ -1,15 +1,16 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule as NestConfigModule } from '@nestjs/config';
 
-import { appConfig } from './app.config';
+import { appConfig, validateConfig } from './app.config';
 
 @Module({
   imports: [
     NestConfigModule.forRoot({
       isGlobal: true,
       load: [appConfig],
-      envFilePath: ['.env', '.env.local'],
+      envFilePath: ['.env.local', '.env', '../../.env.local', '../../.env'],
       expandVariables: true,
+      validate: validateConfig,
     }),
   ],
 })
