@@ -49,4 +49,55 @@ export class NotificationRepository {
   async create(data: Prisma.NotificationUncheckedCreateInput) {
     return this.prisma.notification.create({ data });
   }
+
+  findById(id: string) {
+    return this.prisma.notification.findUnique({ where: { id } });
+  }
+
+  findUserDeliveryProfile(userId: string) {
+    return this.prisma.user.findFirst({
+      where: { id: userId, deletedAt: null, isActive: true },
+      include: {
+        deviceTokens: {
+          where: { isActive: true },
+          select: { id: true, token: true, platform: true },
+        },
+      },
+    });
+  }
+
+  async appendDeliveryLog(
+    notificationId: string,
+    log: {
+      channel: string;
+      status: string;
+      providerMessageId?: string;
+      error?: string;
+      attemptedAt: string;
+    },
+  ) {
+    const notification = await this.prisma.notification.findUnique({
+      where: { id: notificationId },
+    });
+
+    if (!notification) {
+      return null;
+    }
+
+    const data =
+      notification.data && typeof notification.data === 'object' && !Array.isArray(notification.data)
+        ? (notification.data as Record<string, unknown>)
+        : {};
+    const deliveryLogs = Array.isArray(data.deliveryLogs) ? data.deliveryLogs : [];
+
+    return this.prisma.notification.update({
+      where: { id: notificationId },
+      data: {
+        data: {
+          ...data,
+          deliveryLogs: [...deliveryLogs, log],
+        } as Prisma.InputJsonValue,
+      },
+    });
+  }
 }

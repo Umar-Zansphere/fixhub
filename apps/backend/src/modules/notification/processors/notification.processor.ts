@@ -3,37 +3,61 @@ import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 
 import { QUEUE_NAMES } from '../../../common/queue/queue.constants';
-import { NotificationRepository } from '../repositories/notification.repository';
+import { NotificationChannel } from '../dto';
+import { NotificationService } from '../services/notification.service';
 
-@Processor(QUEUE_NAMES.NOTIFICATION)
-export class NotificationProcessor extends WorkerHost {
-  private readonly logger = new Logger(NotificationProcessor.name);
+type NotificationJobData = {
+  notificationId: string;
+  channel: NotificationChannel;
+};
 
-  constructor(private readonly notificationRepository: NotificationRepository) {
+abstract class NotificationWorkerBase extends WorkerHost {
+  protected readonly logger = new Logger(this.constructor.name);
+
+  protected constructor(
+    protected readonly notificationService: NotificationService,
+    private readonly channel: NotificationChannel,
+  ) {
     super();
   }
 
-  async process(job: Job): Promise<void> {
-    const { userId, title, body, type, payload } = job.data;
-
-    this.logger.log(`Processing notification job ${job.id} for user ${userId}`);
-
+  async process(job: Job<NotificationJobData>): Promise<void> {
     try {
-      // 1. Save notification to DB
-      await this.notificationRepository.create({
-        userId,
-        title,
-        body,
-        type,
-        data: payload,
-      });
-
-      // 2. Send FCM push notification
-      // TODO: Implement Firebase Admin SDK push notification
-      this.logger.log(`Notification sent to user ${userId}: ${title}`);
+      await this.notificationService.processChannel(this.channel, job.data.notificationId);
     } catch (error) {
-      this.logger.error(`Failed to process notification job ${job.id}`, error);
-      throw error; // BullMQ will retry based on job options
+      this.logger.error(`Failed ${this.channel} notification job ${job.id}`, error);
+
+      if (job.attemptsMade + 1 >= (job.opts.attempts ?? 1)) {
+        await this.notificationService.moveToDeadLetter({
+          id: job.id,
+          name: job.name,
+          data: job.data,
+          failedReason: (error as Error).message,
+        });
+      }
+
+      throw error;
     }
+  }
+}
+
+@Processor(QUEUE_NAMES.NOTIFICATION)
+export class PushNotificationProcessor extends NotificationWorkerBase {
+  constructor(notificationService: NotificationService) {
+    super(notificationService, NotificationChannel.PUSH);
+  }
+}
+
+@Processor(QUEUE_NAMES.SMS)
+export class SmsNotificationProcessor extends NotificationWorkerBase {
+  constructor(notificationService: NotificationService) {
+    super(notificationService, NotificationChannel.SMS);
+  }
+}
+
+@Processor(QUEUE_NAMES.EMAIL)
+export class EmailNotificationProcessor extends NotificationWorkerBase {
+  constructor(notificationService: NotificationService) {
+    super(notificationService, NotificationChannel.EMAIL);
   }
 }
