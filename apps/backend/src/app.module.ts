@@ -19,6 +19,7 @@ import { AdminModule } from './modules/admin/admin.module';
 // Feature modules
 import { AuthModule } from './modules/auth/auth.module';
 import { BookingModule } from './modules/booking/booking.module';
+import { CatalogModule } from './modules/catalog/catalog.module';
 import { CustomerModule } from './modules/customer/customer.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { PaymentModule } from './modules/payment/payment.module';
@@ -48,6 +49,7 @@ import { UsersModule } from './modules/users/users.module';
 
     // Feature modules
     AuthModule,
+    CatalogModule,
     CustomerModule,
     TechnicianModule,
     BookingModule,

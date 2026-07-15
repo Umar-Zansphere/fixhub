@@ -48,6 +48,8 @@ async function bootstrap() {
     .setVersion('1.0')
     .addBearerAuth()
     .addTag('Auth', 'Authentication & OTP')
+    .addTag('Catalog', 'Public category & service catalog')
+    .addTag('Admin Catalog', 'Admin category & service management')
     .addTag('Users', 'Authenticated user management')
     .addTag('Customer', 'Customer profile & addresses')
     .addTag('Technician', 'Technician profile & job management')
