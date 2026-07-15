@@ -7,6 +7,7 @@ import type { AppConfigValues } from '../../common/config/app.config';
 import { AuthController } from './controllers/auth.controller';
 import { AuthRepository } from './repositories/auth.repository';
 import { AuthService } from './services/auth.service';
+import { OtpService } from './services/otp.service';
 import { TokenService } from './services/token.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
@@ -29,7 +30,17 @@ import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, TokenService, AuthRepository, JwtStrategy, JwtRefreshStrategy],
-  exports: [AuthService, TokenService],
+  providers: [
+    // Services
+    AuthService,
+    OtpService,
+    TokenService,
+    // Repository
+    AuthRepository,
+    // Strategies
+    JwtStrategy,
+    JwtRefreshStrategy,
+  ],
+  exports: [AuthService, TokenService, OtpService],
 })
 export class AuthModule {}
