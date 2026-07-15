@@ -14,8 +14,8 @@ class FixHubApp extends ConsumerWidget {
       title: 'FixHub',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.system,
+      // Forcing light mode for MVP per implementation plan
+      themeMode: ThemeMode.light,
       routerConfig: router,
     );
   }

@@ -1,32 +1,44 @@
 import 'package:flutter/material.dart';
 
+/// FixHub Design System — Color Tokens
+///
+/// Warm neutral palette. Minimal, elegant, professional.
+/// Matches the finalized design system specification.
 class AppColors {
   AppColors._();
 
-  // Primary brand color
-  static const Color primary = Color(0xFF2563EB);
-  static const Color primaryLight = Color(0xFF60A5FA);
-  static const Color primaryDark = Color(0xFF1D4ED8);
+  // ── Primary Background ──────────────────────────────────────
+  static const Color background = Color(0xFFFAF8F5);
+  static const Color surface = Color(0xFFF2EEE8);
+  static const Color elevatedSurface = Color(0xFFFFFFFF);
 
-  // Backgrounds
-  static const Color backgroundLight = Color(0xFFF8FAFC);
-  static const Color backgroundDark = Color(0xFF0F172A);
+  // ── Text ────────────────────────────────────────────────────
+  static const Color textPrimary = Color(0xFF2B2111);
+  static const Color textSecondary = Color(0xFF6B7280);
+  static const Color textDisabled = Color(0xFF9CA3AF);
+  static const Color textLight = Color(0xFFFFFFFF);
 
-  // Surfaces
-  static const Color surfaceLight = Color(0xFFFFFFFF);
-  static const Color surfaceDark = Color(0xFF1E293B);
+  // ── Buttons ─────────────────────────────────────────────────
+  static const Color buttonPrimary = Color(0xFF1F1F1F);
+  static const Color buttonPrimaryText = Color(0xFFFFFFFF);
+  static const Color buttonSecondary = Colors.transparent;
+  static const Color buttonSecondaryBorder = Color(0xFFDDD7CE);
 
-  // Status
-  static const Color success = Color(0xFF22C55E);
-  static const Color warning = Color(0xFFF59E0B);
-  static const Color error = Color(0xFFEF4444);
-  static const Color info = Color(0xFF3B82F6);
+  // ── Borders & Dividers ──────────────────────────────────────
+  static const Color border = Color(0xFFE7E2DA);
+  static const Color divider = Color(0xFFECE7E0);
 
-  // Text
-  static const Color textPrimary = Color(0xFF0F172A);
-  static const Color textSecondary = Color(0xFF64748B);
-  static const Color textLight = Color(0xFFF8FAFC);
+  // ── Status ──────────────────────────────────────────────────
+  static const Color success = Color(0xFF4CAF50);
+  static const Color warning = Color(0xFFD97706);
+  static const Color error = Color(0xFFDC2626);
+  static const Color info = Color(0xFF2563EB);
 
-  // Borders
-  static const Color border = Color(0xFFE2E8F0);
+  // ── Shimmer ─────────────────────────────────────────────────
+  static const Color shimmerBase = Color(0xFFECE7E0);
+  static const Color shimmerHighlight = Color(0xFFF5F2ED);
+
+  // ── Misc ────────────────────────────────────────────────────
+  static const Color overlay = Color(0x80000000);
+  static const Color scrim = Color(0x33000000);
 }

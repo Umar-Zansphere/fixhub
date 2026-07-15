@@ -1,91 +1,180 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
+import '../../features/auth/presentation/providers/auth_provider.dart';
+import '../../features/auth/presentation/screens/login_screen.dart';
+import '../../features/auth/presentation/screens/otp_screen.dart';
+import '../../features/auth/presentation/screens/splash_screen.dart';
+import '../../features/auth/presentation/screens/welcome_screen.dart';
+import '../../features/booking/presentation/screens/bookings_list_screen.dart';
+import '../../features/home/presentation/screens/home_screen.dart';
+import '../../features/profile/presentation/screens/profile_screen.dart';
+import '../../features/services/presentation/screens/category_services_screen.dart';
+import '../../features/services/presentation/screens/service_detail_screen.dart';
+import '../../features/support/presentation/screens/support_screen.dart';
+import '../../features/booking/presentation/screens/select_address_screen.dart';
+import '../../features/booking/presentation/screens/select_slot_screen.dart';
+import '../../features/booking/presentation/screens/booking_summary_screen.dart';
+import '../../features/booking/presentation/screens/payment_screen.dart';
+import '../../features/booking/presentation/screens/booking_success_screen.dart';
+import '../../features/booking/presentation/screens/booking_detail_screen.dart';
 import 'route_names.dart';
+import 'scaffold_with_nav_bar.dart';
+
+final navigatorKey = GlobalKey<NavigatorState>();
+final _shellNavigatorKey = GlobalKey<NavigatorState>();
 
 final routerProvider = Provider<GoRouter>((ref) {
+  final authState = ref.watch(authProvider);
+
   return GoRouter(
+    navigatorKey: navigatorKey,
     initialLocation: RouteNames.splash,
     debugLogDiagnostics: true,
+    redirect: (context, state) {
+      final isAuthRoute = state.matchedLocation == RouteNames.welcome ||
+          state.matchedLocation == RouteNames.login ||
+          state.matchedLocation == RouteNames.otp;
+
+      final isSplashRoute = state.matchedLocation == RouteNames.splash;
+
+      if (isSplashRoute) return null;
+
+      if (!authState.isAuthenticated && !isAuthRoute) {
+        return RouteNames.welcome;
+      }
+
+      if (authState.isAuthenticated && isAuthRoute) {
+        return RouteNames.home;
+      }
+
+      return null;
+    },
     routes: [
+      // ── Auth Routes ─────────────────────────────────────────────
       GoRoute(
         path: RouteNames.splash,
         name: 'splash',
-        builder: (context, state) => const Scaffold(
-          body: Center(child: CircularProgressIndicator()),
-        ),
-        // TODO: Replace with SplashScreen that checks auth state
+        builder: (context, state) => const SplashScreen(),
+      ),
+      GoRoute(
+        path: RouteNames.welcome,
+        name: 'welcome',
+        builder: (context, state) => const WelcomeScreen(),
       ),
       GoRoute(
         path: RouteNames.login,
         name: 'login',
-        builder: (context, state) => const Scaffold(
-          body: Center(child: Text('Login Screen')),
-        ),
-        // TODO: Replace with LoginScreen from auth feature
+        builder: (context, state) => const LoginScreen(),
       ),
-      ShellRoute(
-        builder: (context, state, child) => Scaffold(
-          body: child,
-          bottomNavigationBar: NavigationBar(
-            selectedIndex: _getSelectedIndex(state.matchedLocation),
-            onDestinationSelected: (index) => _onDestinationSelected(index, context),
-            destinations: const [
-              NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
-              NavigationDestination(icon: Icon(Icons.calendar_today), label: 'Bookings'),
-              NavigationDestination(icon: Icon(Icons.notifications), label: 'Alerts'),
-              NavigationDestination(icon: Icon(Icons.person), label: 'Profile'),
+      GoRoute(
+        path: RouteNames.otp,
+        name: 'otp',
+        builder: (context, state) => const OtpScreen(),
+      ),
+
+      // ── Shell Routes (Bottom Nav) ───────────────────────────────
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) {
+          return ScaffoldWithNavBar(navigationShell: navigationShell);
+        },
+        branches: [
+          // Branch 0 - Home
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: RouteNames.home,
+                name: 'home',
+                builder: (context, state) => const HomeScreen(),
+              ),
             ],
           ),
-        ),
-        routes: [
-          GoRoute(
-            path: RouteNames.home,
-            name: 'home',
-            builder: (context, state) => const Center(child: Text('Home')),
-            // TODO: Replace with HomeScreen
+          // Branch 1 - Bookings
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: RouteNames.bookings,
+                name: 'bookings',
+                builder: (context, state) => const BookingsListScreen(),
+              ),
+            ],
           ),
-          GoRoute(
-            path: RouteNames.bookings,
-            name: 'bookings',
-            builder: (context, state) => const Center(child: Text('Bookings')),
-            // TODO: Replace with BookingsScreen
+          // Branch 2 - Support
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: RouteNames.support,
+                name: 'support',
+                builder: (context, state) => const SupportScreen(),
+              ),
+            ],
           ),
-          GoRoute(
-            path: RouteNames.notifications,
-            name: 'notifications',
-            builder: (context, state) => const Center(child: Text('Notifications')),
-            // TODO: Replace with NotificationsScreen
-          ),
-          GoRoute(
-            path: RouteNames.profile,
-            name: 'profile',
-            builder: (context, state) => const Center(child: Text('Profile')),
-            // TODO: Replace with ProfileScreen
+          // Branch 3 - Profile
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: RouteNames.profile,
+                name: 'profile',
+                builder: (context, state) => const ProfileScreen(),
+              ),
+            ],
           ),
         ],
       ),
+
+      // ── Feature Routes ──────────────────────────────────────────
+      GoRoute(
+        path: RouteNames.categoryServices,
+        name: 'categoryServices',
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return CategoryServicesScreen(categoryId: id);
+        },
+      ),
+      GoRoute(
+        path: RouteNames.serviceDetail,
+        name: 'serviceDetail',
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return ServiceDetailScreen(serviceId: id);
+        },
+      ),
+
+      // ── Booking Flow Routes ──────────────────────────────────────
+      GoRoute(
+        path: RouteNames.selectAddress,
+        name: 'selectAddress',
+        builder: (context, state) => const SelectAddressScreen(),
+      ),
+      GoRoute(
+        path: RouteNames.selectSlot,
+        name: 'selectSlot',
+        builder: (context, state) => const SelectSlotScreen(),
+      ),
+      GoRoute(
+        path: RouteNames.bookingSummary,
+        name: 'bookingSummary',
+        builder: (context, state) => const BookingSummaryScreen(),
+      ),
+      GoRoute(
+        path: RouteNames.payment,
+        name: 'payment',
+        builder: (context, state) => const PaymentScreen(),
+      ),
+      GoRoute(
+        path: RouteNames.bookingSuccess,
+        name: 'bookingSuccess',
+        builder: (context, state) => const BookingSuccessScreen(),
+      ),
+      GoRoute(
+        path: '/booking-detail/:id',
+        name: 'bookingDetail',
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return BookingDetailScreen(bookingId: id);
+        },
+      ),
     ],
-    // TODO: Add redirect logic for auth state
   );
 });
-
-int _getSelectedIndex(String location) {
-  if (location.startsWith(RouteNames.bookings)) return 1;
-  if (location.startsWith(RouteNames.notifications)) return 2;
-  if (location.startsWith(RouteNames.profile)) return 3;
-  return 0;
-}
-
-void _onDestinationSelected(int index, BuildContext context) {
-  switch (index) {
-    case 0:
-      context.go(RouteNames.home);
-    case 1:
-      context.go(RouteNames.bookings);
-    case 2:
-      context.go(RouteNames.notifications);
-    case 3:
-      context.go(RouteNames.profile);
-  }
-}

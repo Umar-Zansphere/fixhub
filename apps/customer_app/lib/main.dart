@@ -6,11 +6,8 @@ import 'app.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Hive for local storage
+  // Initialize Hive for local storage (used for tokens & user data)
   await Hive.initFlutter();
-
-  // TODO: Initialize Firebase
-  // await Firebase.initializeApp();
 
   runApp(
     const ProviderScope(
