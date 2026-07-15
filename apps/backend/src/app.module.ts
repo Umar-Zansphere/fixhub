@@ -24,6 +24,7 @@ import { CustomerModule } from './modules/customer/customer.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { PaymentModule } from './modules/payment/payment.module';
 import { ReportingModule } from './modules/reporting/reporting.module';
+import { ServiceAreaModule } from './modules/service-area/service-area.module';
 import { TechnicianModule } from './modules/technician/technician.module';
 import { UsersModule } from './modules/users/users.module';
 
@@ -56,6 +57,7 @@ import { UsersModule } from './modules/users/users.module';
     PaymentModule,
     NotificationModule,
     UsersModule,
+    ServiceAreaModule,
     AdminModule,
     ReportingModule,
   ],

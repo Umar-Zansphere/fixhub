@@ -50,6 +50,8 @@ async function bootstrap() {
     .addTag('Auth', 'Authentication & OTP')
     .addTag('Catalog', 'Public category & service catalog')
     .addTag('Admin Catalog', 'Admin category & service management')
+    .addTag('Service Areas', 'Public service area coverage')
+    .addTag('Admin Service Areas', 'Admin service area management')
     .addTag('Users', 'Authenticated user management')
     .addTag('Customer', 'Customer profile & addresses')
     .addTag('Technician', 'Technician profile & job management')
