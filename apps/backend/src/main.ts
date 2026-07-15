@@ -48,6 +48,7 @@ async function bootstrap() {
     .setVersion('1.0')
     .addBearerAuth()
     .addTag('Auth', 'Authentication & OTP')
+    .addTag('Users', 'Authenticated user management')
     .addTag('Customer', 'Customer profile & addresses')
     .addTag('Technician', 'Technician profile & job management')
     .addTag('Bookings', 'Booking lifecycle')

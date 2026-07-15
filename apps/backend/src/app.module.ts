@@ -24,6 +24,7 @@ import { NotificationModule } from './modules/notification/notification.module';
 import { PaymentModule } from './modules/payment/payment.module';
 import { ReportingModule } from './modules/reporting/reporting.module';
 import { TechnicianModule } from './modules/technician/technician.module';
+import { UsersModule } from './modules/users/users.module';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { TechnicianModule } from './modules/technician/technician.module';
     BookingModule,
     PaymentModule,
     NotificationModule,
+    UsersModule,
     AdminModule,
     ReportingModule,
   ],
