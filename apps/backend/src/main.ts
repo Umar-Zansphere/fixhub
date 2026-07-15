@@ -56,6 +56,7 @@ async function bootstrap() {
     .addTag('Customer', 'Customer profile & addresses')
     .addTag('Technician', 'Technician profile & job management')
     .addTag('Bookings', 'Booking lifecycle')
+    .addTag('Admin Bookings', 'Admin booking queries')
     .addTag('Payments', 'Payment processing')
     .addTag('Notifications', 'Push notifications')
     .addTag('Admin', 'Admin panel operations')
