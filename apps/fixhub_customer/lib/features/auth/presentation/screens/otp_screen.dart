@@ -91,6 +91,15 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
       }
     });
 
+    // Pre-fill dev OTP if available
+    if (authState.devOtp != null && _otpController.text.isEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _otpController.text.isEmpty) {
+          _otpController.text = authState.devOtp!;
+        }
+      });
+    }
+
     // Pinput theme
     final defaultPinTheme = PinTheme(
       width: 52,
@@ -130,7 +139,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
 
               // Title
               Text(
-                'Verification code',
+                'Enter OTP',
                 style: Theme.of(context).textTheme.displayLarge?.copyWith(
                       color: AppColors.textPrimary,
                       height: 1.2,
@@ -145,7 +154,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                         color: AppColors.textSecondary,
                       ),
                   children: [
-                    const TextSpan(text: 'Enter the code sent to '),
+                    const TextSpan(text: 'We\'ve sent a 6-digit code to '),
                     TextSpan(
                       text: _formatPhone(phone),
                       style: const TextStyle(
@@ -156,6 +165,33 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                   ],
                 ),
               ),
+
+              if (authState.devOtp != null) ...[
+                const SizedBox(height: AppSpacing.md),
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.sm),
+                  decoration: BoxDecoration(
+                    color: AppColors.warning.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.warning),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.bug_report_outlined, color: AppColors.warning, size: 20),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Text(
+                          'Dev Mode: Your OTP is ${authState.devOtp}',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: AppColors.warning,
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
 
               const SizedBox(height: AppSpacing.xxxl),
 
@@ -194,7 +230,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                         ),
                       )
                     : Text(
-                        'Resend code in ${_remainingSeconds}s',
+                        'Resend OTP in 00:${_remainingSeconds.toString().padLeft(2, '0')}',
                         style:
                             Theme.of(context).textTheme.bodyMedium?.copyWith(
                                   color: AppColors.textDisabled,

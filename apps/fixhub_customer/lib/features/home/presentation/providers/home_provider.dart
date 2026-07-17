@@ -53,3 +53,11 @@ final popularServicesProvider =
 
   return allServices;
 });
+
+// ── Service Detail Provider ───────────────────────────────────
+
+final serviceDetailProvider =
+    FutureProvider.family<SubServiceModel, String>((ref, id) async {
+  final repo = ref.watch(homeRepositoryProvider);
+  return repo.getService(id);
+});

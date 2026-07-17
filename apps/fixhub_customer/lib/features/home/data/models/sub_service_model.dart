@@ -15,6 +15,7 @@ class SubServiceModel {
     this.iconUrl,
     required this.isActive,
     this.sortOrder = 0,
+    this.category,
   });
 
   final String id;
@@ -22,11 +23,13 @@ class SubServiceModel {
   final String name;
   final String slug;
   final String? description;
+  @JsonKey(fromJson: _parseDouble)
   final double basePrice;
   final int estimatedDurationMins;
   final String? iconUrl;
   final bool isActive;
   final int sortOrder;
+  final SubServiceCategory? category;
 
   factory SubServiceModel.fromJson(Map<String, dynamic> json) =>
       _$SubServiceModelFromJson(json);
@@ -43,4 +46,23 @@ class SubServiceModel {
     }
     return '${estimatedDurationMins}m';
   }
+}
+
+double _parseDouble(dynamic value) {
+  if (value is num) return value.toDouble();
+  if (value is String) return double.tryParse(value) ?? 0.0;
+  return 0.0;
+}
+
+@JsonSerializable()
+class SubServiceCategory {
+  final String id;
+  final String name;
+
+  const SubServiceCategory({required this.id, required this.name});
+
+  factory SubServiceCategory.fromJson(Map<String, dynamic> json) =>
+      _$SubServiceCategoryFromJson(json);
+
+  Map<String, dynamic> toJson() => _$SubServiceCategoryToJson(this);
 }

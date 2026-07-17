@@ -44,6 +44,7 @@ export class AuthService {
     return {
       message: 'OTP sent successfully',
       expiresInSeconds,
+      devOtp: process.env.NODE_ENV !== 'production' ? otp : undefined,
     };
   }
 

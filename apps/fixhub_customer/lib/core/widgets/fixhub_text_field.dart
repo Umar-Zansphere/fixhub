@@ -30,6 +30,7 @@ class FixHubTextField extends StatelessWidget {
     this.focusNode,
     this.textCapitalization = TextCapitalization.none,
     this.prefix,
+    this.validator,
   });
 
   final TextEditingController? controller;
@@ -54,6 +55,7 @@ class FixHubTextField extends StatelessWidget {
   final FocusNode? focusNode;
   final TextCapitalization textCapitalization;
   final Widget? prefix;
+  final String? Function(String?)? validator;
 
   @override
   Widget build(BuildContext context) {
@@ -70,7 +72,7 @@ class FixHubTextField extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.xs),
         ],
-        TextField(
+        TextFormField(
           controller: controller,
           obscureText: obscureText,
           readOnly: readOnly,
@@ -81,11 +83,12 @@ class FixHubTextField extends StatelessWidget {
           maxLength: maxLength,
           maxLines: maxLines,
           onChanged: onChanged,
-          onSubmitted: onSubmitted,
+          onFieldSubmitted: onSubmitted,
           onTap: onTap,
           autofocus: autofocus,
           focusNode: focusNode,
           textCapitalization: textCapitalization,
+          validator: validator,
           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                 color: AppColors.textPrimary,
               ),

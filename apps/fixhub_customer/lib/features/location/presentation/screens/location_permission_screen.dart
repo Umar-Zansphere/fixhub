@@ -54,7 +54,7 @@ class LocationPermissionScreen extends ConsumerWidget {
                 label: 'Allow Location Access',
                 onPressed: () async {
                   final granted = await ref
-                      .read(locationPermissionProvider.notifier)
+                      .read(locationProvider.notifier)
                       .requestPermission();
                   if (granted && context.mounted) {
                     context.pop();

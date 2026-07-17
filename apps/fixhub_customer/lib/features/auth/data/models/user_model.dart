@@ -23,6 +23,7 @@ class UserModel {
   final String role;
   final bool? isActive;
   final String? createdAt;
+  @JsonKey(name: 'customer')
   final CustomerProfile? profile;
 
   factory UserModel.fromJson(Map<String, dynamic> json) =>

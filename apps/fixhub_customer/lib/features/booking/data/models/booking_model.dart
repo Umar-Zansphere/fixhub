@@ -9,32 +9,53 @@ part 'booking_model.g.dart';
 class BookingModel {
   const BookingModel({
     required this.id,
+    required this.bookingNumber,
     required this.customerId,
     this.technicianId,
-    required this.serviceId,
+    required this.subServiceId,
     required this.addressId,
     required this.status,
-    required this.scheduledAt,
-    this.completedAt,
+    required this.scheduledDate,
+    required this.scheduledSlot,
+    this.description,
+    @JsonKey(fromJson: _parseDouble)
     required this.totalAmount,
-    required this.paymentStatus,
     this.notes,
+    this.completedAt,
+    this.cancelledAt,
+    this.cancelledBy,
+    this.cancelReason,
+    this.failedAt,
+    this.failureReason,
     this.address,
+    this.subService,
+    this.technician,
     this.timeline = const [],
   });
 
   final String id;
+  final String bookingNumber;
   final String customerId;
   final String? technicianId;
-  final String serviceId;
+  final String subServiceId;
   final String addressId;
   final String status;
-  final DateTime scheduledAt;
-  final DateTime? completedAt;
+  final DateTime scheduledDate;
+  final String scheduledSlot;
+  final String? description;
   final double totalAmount;
-  final String paymentStatus;
   final String? notes;
+  final DateTime? completedAt;
+  final DateTime? cancelledAt;
+  final String? cancelledBy;
+  final String? cancelReason;
+  final DateTime? failedAt;
+  final String? failureReason;
+  
+  // Relations
   final AddressModel? address;
+  final Map<String, dynamic>? subService;
+  final Map<String, dynamic>? technician;
   final List<BookingTimelineModel> timeline;
 
   factory BookingModel.fromJson(Map<String, dynamic> json) =>
@@ -43,14 +64,22 @@ class BookingModel {
   Map<String, dynamic> toJson() => _$BookingModelToJson(this);
 
   String get formattedTotal => '₹${totalAmount.toStringAsFixed(0)}';
+  
+  // This helps when payment info is nested or needs to be derived. 
+  // Let's assume payment is handled via related payment object or defaults to PENDING
+  String get paymentStatus => 'PENDING'; 
 
   BookingStatusType get statusType {
     switch (status.toUpperCase()) {
-      case 'PENDING':
+      case 'DRAFT':
+        return BookingStatusType.pending;
+      case 'PENDING_PAYMENT':
         return BookingStatusType.pending;
       case 'CONFIRMED':
         return BookingStatusType.confirmed;
       case 'ASSIGNED':
+        return BookingStatusType.assigned;
+      case 'ACCEPTED':
         return BookingStatusType.assigned;
       case 'EN_ROUTE':
         return BookingStatusType.enRoute;
@@ -62,6 +91,8 @@ class BookingModel {
         return BookingStatusType.completed;
       case 'CANCELLED':
         return BookingStatusType.cancelled;
+      case 'FAILED':
+        return BookingStatusType.failed;
       default:
         return BookingStatusType.pending;
     }
@@ -80,4 +111,10 @@ class BookingModel {
       case BookingStatusType.failed: return 'Failed';
     }
   }
+}
+
+double _parseDouble(dynamic value) {
+  if (value is num) return value.toDouble();
+  if (value is String) return double.tryParse(value) ?? 0.0;
+  return 0.0;
 }

@@ -27,12 +27,14 @@ class AuthState {
   final String? errorMessage;
   final UserModel? user;
   final String? phone;
+  final String? devOtp;
 
   const AuthState({
     this.status = AuthStatus.initial,
     this.errorMessage,
     this.user,
     this.phone,
+    this.devOtp,
   });
 
   AuthState copyWith({
@@ -40,12 +42,14 @@ class AuthState {
     String? errorMessage,
     UserModel? user,
     String? phone,
+    String? devOtp,
   }) {
     return AuthState(
       status: status ?? this.status,
       errorMessage: errorMessage,
       user: user ?? this.user,
       phone: phone ?? this.phone,
+      devOtp: devOtp ?? this.devOtp,
     );
   }
 
@@ -109,8 +113,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
       phone: phone,
     );
     try {
-      await _repository.sendOtp(phone);
-      state = state.copyWith(status: AuthStatus.otpSent);
+      final devOtp = await _repository.sendOtp(phone);
+      state = state.copyWith(status: AuthStatus.otpSent, devOtp: devOtp);
     } on Failure catch (e) {
       state = state.copyWith(
         status: AuthStatus.error,

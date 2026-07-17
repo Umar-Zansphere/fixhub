@@ -8,6 +8,9 @@ class LocalStorage {
   static const String _accessTokenKey = 'access_token';
   static const String _refreshTokenKey = 'refresh_token';
   static const String _userBox = 'user_data';
+  static const String _locationBox = 'location_data';
+  static const String _locationPincodeKey = 'pincode';
+  static const String _locationStatusKey = 'status';
 
   Future<Box> _getBox(String name) async {
     if (Hive.isBoxOpen(name)) {
@@ -54,6 +57,28 @@ class LocalStorage {
     await clearTokens();
     final userBox = await _getBox(_userBox);
     await userBox.clear();
+  }
+
+  // --- Location ---
+  Future<void> saveLocation({required String pincode, required String status}) async {
+    final box = await _getBox(_locationBox);
+    await box.put(_locationPincodeKey, pincode);
+    await box.put(_locationStatusKey, status);
+  }
+
+  Future<String?> getSavedPincode() async {
+    final box = await _getBox(_locationBox);
+    return box.get(_locationPincodeKey) as String?;
+  }
+
+  Future<String?> getSavedLocationStatus() async {
+    final box = await _getBox(_locationBox);
+    return box.get(_locationStatusKey) as String?;
+  }
+
+  Future<void> clearLocation() async {
+    final box = await _getBox(_locationBox);
+    await box.clear();
   }
 
   Future<bool> isLoggedIn() async {

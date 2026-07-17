@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -20,6 +21,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   late final AnimationController _controller;
   late final Animation<double> _fadeAnimation;
   late final Animation<double> _scaleAnimation;
+  Timer? _safetyTimer;
+  bool _hasNavigated = false;
 
   @override
   void initState() {
@@ -39,6 +42,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
     _controller.forward();
     _checkAuth();
+
+    // Safety timeout — if auth check hangs, navigate to welcome after 5s
+    _safetyTimer = Timer(const Duration(seconds: 5), () {
+      _navigateTo(RouteNames.welcome);
+    });
   }
 
   Future<void> _checkAuth() async {
@@ -47,11 +55,24 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
     if (!mounted) return;
 
-    await ref.read(authProvider.notifier).checkAuthStatus();
+    try {
+      await ref.read(authProvider.notifier).checkAuthStatus();
+    } catch (e) {
+      debugPrint('Auth check failed: $e');
+      _navigateTo(RouteNames.welcome);
+    }
+  }
+
+  void _navigateTo(String route) {
+    if (_hasNavigated || !mounted) return;
+    _hasNavigated = true;
+    _safetyTimer?.cancel();
+    context.go(route);
   }
 
   @override
   void dispose() {
+    _safetyTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -60,11 +81,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   Widget build(BuildContext context) {
     // Listen for auth state changes and navigate
     ref.listen<AuthState>(authProvider, (previous, next) {
-      if (!mounted) return;
       if (next.status == AuthStatus.authenticated) {
-        context.go(RouteNames.home);
-      } else if (next.status == AuthStatus.unauthenticated) {
-        context.go(RouteNames.welcome);
+        _navigateTo(RouteNames.home);
+      } else if (next.status == AuthStatus.unauthenticated ||
+          next.status == AuthStatus.error) {
+        _navigateTo(RouteNames.welcome);
       }
     });
 
@@ -121,3 +142,4 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     );
   }
 }
+

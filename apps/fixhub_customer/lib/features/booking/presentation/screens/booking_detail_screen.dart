@@ -52,9 +52,9 @@ class BookingDetailScreen extends ConsumerWidget {
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                     const SizedBox(height: AppSpacing.sm),
-                    // TODO: Replace with actual service name when populated from backend
+                    // Use actual service name when populated from backend
                     Text(
-                      'Fan Repair',
+                      booking.subService?['name'] ?? 'Service',
                       style: Theme.of(context).textTheme.bodyLarge,
                     ),
                     const SizedBox(height: AppSpacing.xxs),
@@ -63,7 +63,7 @@ class BookingDetailScreen extends ConsumerWidget {
                         const Icon(Icons.calendar_today_rounded, size: 16, color: AppColors.textSecondary),
                         const SizedBox(width: AppSpacing.xs),
                         Text(
-                          DateFormat('EEEE, MMM d, yyyy - hh:mm a').format(booking.scheduledAt),
+                          DateFormat('EEEE, MMM d, yyyy - hh:mm a').format(booking.scheduledDate),
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                 color: AppColors.textSecondary,
                               ),
@@ -87,7 +87,7 @@ class BookingDetailScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: AppSpacing.sm),
                       Text(
-                        booking.address!.type,
+                        booking.address!.label,
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       const SizedBox(height: AppSpacing.xxs),
@@ -143,6 +143,60 @@ class BookingDetailScreen extends ConsumerWidget {
               ),
               const SizedBox(height: AppSpacing.md),
 
+              // Technician Details
+              if (booking.technician != null) ...[
+                FixHubCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Assigned Technician',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      Row(
+                        children: [
+                          Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.person, color: AppColors.textPrimary),
+                          ),
+                          const SizedBox(width: AppSpacing.md),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  booking.technician!['user']?['name'] ?? 'Technician',
+                                  style: Theme.of(context).textTheme.titleMedium,
+                                ),
+                                const SizedBox(height: AppSpacing.xxs),
+                                Text(
+                                  booking.technician!['user']?['phone'] ?? '',
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                        color: AppColors.textSecondary,
+                                      ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          // TODO: implement actual call action
+                          IconButton(
+                            icon: const Icon(Icons.phone, color: AppColors.buttonPrimary),
+                            onPressed: () {},
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+              ],
+              
               // Timeline
               if (booking.timeline.isNotEmpty) ...[
                 FixHubCard(
@@ -178,7 +232,7 @@ class BookingDetailScreen extends ConsumerWidget {
                                       style: Theme.of(context).textTheme.titleMedium,
                                     ),
                                     Text(
-                                      DateFormat('MMM d, hh:mm a').format(event.timestamp),
+                                      DateFormat('MMM d, hh:mm a').format(event.createdAt),
                                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                             color: AppColors.textSecondary,
                                           ),
@@ -194,6 +248,69 @@ class BookingDetailScreen extends ConsumerWidget {
                   ),
                 ),
               ],
+              
+              // Action Buttons
+              if (booking.statusType == BookingStatusType.pending || 
+                  booking.statusType == BookingStatusType.confirmed) ...[
+                const SizedBox(height: AppSpacing.lg),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.error,
+                      foregroundColor: AppColors.surface,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('Cancel Booking'),
+                          content: const Text('Are you sure you want to cancel this booking?'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx),
+                              child: const Text('No'),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                Navigator.pop(ctx);
+                                ref.read(bookingActionProvider.notifier).cancelBooking(booking.id, 'User requested cancellation');
+                              },
+                              child: const Text('Yes, Cancel', style: TextStyle(color: AppColors.error)),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                    child: const Text('Cancel Booking'),
+                  ),
+                ),
+              ],
+              if (booking.statusType == BookingStatusType.completed) ...[
+                const SizedBox(height: AppSpacing.lg),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.buttonPrimary,
+                      foregroundColor: AppColors.surface,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    onPressed: () {
+                      // TODO: Navigate to rating screen
+                    },
+                    child: const Text('Rate Service'),
+                  ),
+                ),
+              ],
+              const SizedBox(height: AppSpacing.xxl),
             ],
           );
         },

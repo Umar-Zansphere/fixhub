@@ -11,8 +11,10 @@ class AuthRepositoryImpl implements AuthRepository {
   AuthRepositoryImpl(this._remoteDataSource, this._localStorage);
 
   @override
-  Future<void> sendOtp(String phone) async {
-    await _remoteDataSource.sendOtp(phone);
+  Future<String?> sendOtp(String phone) async {
+    final response = await _remoteDataSource.sendOtp(phone);
+    final data = response['data'] ?? response;
+    return data['devOtp'] as String?;
   }
 
   @override

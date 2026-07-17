@@ -20,5 +20,23 @@ export class CustomerService {
     return customer;
   }
 
-  // TODO: Implement profile update, address CRUD
+  async updateProfile(userId: string, data: any) {
+    return this.customerRepository.updateProfile(userId, data);
+  }
+
+  async getAddresses(userId: string) {
+    return this.customerRepository.getAddresses(userId);
+  }
+
+  async addAddress(userId: string, data: any) {
+    return this.customerRepository.addAddress(userId, data);
+  }
+
+  async updateAddress(userId: string, addressId: string, data: any) {
+    return this.customerRepository.updateAddress(addressId, data);
+  }
+
+  async deleteAddress(userId: string, addressId: string) {
+    return this.customerRepository.deleteAddress(addressId);
+  }
 }

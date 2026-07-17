@@ -11,6 +11,8 @@ import '../../../../core/widgets/fixhub_card.dart';
 import '../../../../core/router/route_names.dart';
 import '../providers/booking_flow_provider.dart';
 import '../../../../core/widgets/fixhub_text_field.dart';
+import '../../../../core/widgets/fixhub_snackbar.dart';
+import '../providers/booking_provider.dart';
 
 class BookingSummaryScreen extends ConsumerWidget {
   const BookingSummaryScreen({super.key});
@@ -26,7 +28,7 @@ class BookingSummaryScreen extends ConsumerWidget {
       return const Scaffold(body: Center(child: Text('Missing booking details')));
     }
 
-    final platformFee = 49.0;
+    const platformFee = 49.0;
     final total = service.basePrice + platformFee;
 
     return Scaffold(
@@ -78,6 +80,29 @@ class BookingSummaryScreen extends ConsumerWidget {
                           ),
                         ],
                       ),
+                      if (flowState.issueTags.isNotEmpty) ...[
+                        const SizedBox(height: AppSpacing.md),
+                        Wrap(
+                          spacing: AppSpacing.xs,
+                          runSpacing: AppSpacing.xs,
+                          children: flowState.issueTags.map((tag) {
+                            return Container(
+                              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xxs),
+                              decoration: BoxDecoration(
+                                color: AppColors.buttonPrimary.withOpacity(0.05),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: AppColors.border),
+                              ),
+                              child: Text(
+                                tag,
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: AppColors.buttonPrimary,
+                                    ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -145,7 +170,7 @@ class BookingSummaryScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: AppSpacing.md),
                       Text(
-                        address.type,
+                        address.label,
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       const SizedBox(height: AppSpacing.xxs),
@@ -160,20 +185,31 @@ class BookingSummaryScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: AppSpacing.md),
 
-                // Notes
+                // Issue Details & Contact
                 FixHubCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Additional Notes (Optional)',
+                        'Issue Description (Optional)',
                         style: Theme.of(context).textTheme.headlineMedium,
                       ),
                       const SizedBox(height: AppSpacing.sm),
                       FixHubTextField(
-                        hint: 'Any special instructions for the technician?',
+                        hint: 'Describe the issue or add special instructions...',
                         maxLines: 3,
-                        onChanged: (val) => ref.read(bookingFlowProvider.notifier).setNotes(val),
+                        onChanged: (val) => ref.read(bookingFlowProvider.notifier).setDescription(val),
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      Text(
+                        'Contact Number',
+                        style: Theme.of(context).textTheme.headlineMedium,
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      FixHubTextField(
+                        hint: 'Enter mobile number for technician',
+                        keyboardType: TextInputType.phone,
+                        onChanged: (val) => ref.read(bookingFlowProvider.notifier).setContactNumber(val),
                       ),
                     ],
                   ),
@@ -213,8 +249,23 @@ class BookingSummaryScreen extends ConsumerWidget {
               padding: const EdgeInsets.all(AppSpacing.screenPadding),
               child: FixHubButton(
                 label: 'Proceed to Pay ₹${total.toStringAsFixed(0)}',
-                onPressed: () {
-                  context.push(RouteNames.payment);
+                isLoading: flowState.isLoading,
+                onPressed: () async {
+                  try {
+                    final repo = ref.read(bookingRepositoryProvider);
+                    // 1. Create draft booking
+                    await ref.read(bookingFlowProvider.notifier).createDraftBooking(repo);
+                    // 2. Confirm it (backend requires CONFIRMED to create payment order)
+                    final draftId = ref.read(bookingFlowProvider).draftBookingId!;
+                    await repo.confirmBooking(draftId, {});
+                    if (context.mounted) {
+                      context.push(RouteNames.payment);
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      FixHubSnackbar.error(context, 'Failed to create booking: $e');
+                    }
+                  }
                 },
               ),
             ),

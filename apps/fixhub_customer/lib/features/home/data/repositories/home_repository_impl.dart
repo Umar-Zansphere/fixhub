@@ -23,4 +23,10 @@ class HomeRepositoryImpl implements HomeRepository {
         .map((e) => SubServiceModel.fromJson(Map<String, dynamic>.from(e)))
         .toList();
   }
+
+  @override
+  Future<SubServiceModel> getService(String id) async {
+    final data = await _remoteDataSource.getService(id);
+    return SubServiceModel.fromJson(data);
+  }
 }

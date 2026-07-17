@@ -10,9 +10,16 @@ import '../../features/auth/presentation/screens/welcome_screen.dart';
 import '../../features/booking/presentation/screens/bookings_list_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
+import '../../features/profile/presentation/screens/saved_addresses_screen.dart';
+import '../../features/profile/presentation/screens/add_address_screen.dart';
+import '../../features/profile/presentation/screens/edit_profile_screen.dart';
 import '../../features/services/presentation/screens/category_services_screen.dart';
 import '../../features/services/presentation/screens/service_detail_screen.dart';
 import '../../features/support/presentation/screens/support_screen.dart';
+import '../../features/location/presentation/screens/location_access_screen.dart';
+import '../../features/location/presentation/screens/set_location_screen.dart';
+import '../../features/location/presentation/screens/service_area_not_covered_screen.dart';
+import '../../features/location/presentation/providers/location_provider.dart';
 import '../../features/booking/presentation/screens/select_address_screen.dart';
 import '../../features/booking/presentation/screens/select_slot_screen.dart';
 import '../../features/booking/presentation/screens/booking_summary_screen.dart';
@@ -25,14 +32,23 @@ import 'scaffold_with_nav_bar.dart';
 final navigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
 
-final routerProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authProvider);
+class _RouterNotifier extends ChangeNotifier {
+  _RouterNotifier(Ref ref) {
+    ref.listen(authProvider, (_, __) => notifyListeners());
+    ref.listen(locationProvider, (_, __) => notifyListeners());
+  }
+}
 
+final routerProvider = Provider<GoRouter>((ref) {
+  final notifier = _RouterNotifier(ref);
   return GoRouter(
     navigatorKey: navigatorKey,
     initialLocation: RouteNames.splash,
     debugLogDiagnostics: true,
+    refreshListenable: notifier,
     redirect: (context, state) {
+      final authState = ref.read(authProvider);
+      
       final isAuthRoute = state.matchedLocation == RouteNames.welcome ||
           state.matchedLocation == RouteNames.login ||
           state.matchedLocation == RouteNames.otp;
@@ -46,7 +62,25 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
 
       if (authState.isAuthenticated && isAuthRoute) {
-        return RouteNames.home;
+        if (ref.read(locationProvider).status == LocationStatus.valid) {
+          return RouteNames.home;
+        } else {
+          return RouteNames.locationAccess;
+        }
+      }
+
+      if (authState.isAuthenticated) {
+        final locationState = ref.read(locationProvider);
+        // Wait for location to be restored from storage before redirecting
+        if (locationState.isRestoring) return null;
+        final locationStatus = locationState.status;
+        final isLocationRoute = state.matchedLocation == RouteNames.locationAccess ||
+            state.matchedLocation == RouteNames.setLocation ||
+            state.matchedLocation == RouteNames.serviceAreaNotCovered;
+            
+        if (locationStatus == LocationStatus.initial && !isLocationRoute) {
+          return RouteNames.locationAccess;
+        }
       }
 
       return null;
@@ -141,6 +175,23 @@ final routerProvider = Provider<GoRouter>((ref) {
         },
       ),
 
+      // ── Location Routes ──────────────────────────────────────────
+      GoRoute(
+        path: RouteNames.locationAccess,
+        name: 'locationAccess',
+        builder: (context, state) => const LocationAccessScreen(),
+      ),
+      GoRoute(
+        path: RouteNames.setLocation,
+        name: 'setLocation',
+        builder: (context, state) => const SetLocationScreen(),
+      ),
+      GoRoute(
+        path: RouteNames.serviceAreaNotCovered,
+        name: 'serviceAreaNotCovered',
+        builder: (context, state) => const ServiceAreaNotCoveredScreen(),
+      ),
+
       // ── Booking Flow Routes ──────────────────────────────────────
       GoRoute(
         path: RouteNames.selectAddress,
@@ -174,6 +225,21 @@ final routerProvider = Provider<GoRouter>((ref) {
           final id = state.pathParameters['id']!;
           return BookingDetailScreen(bookingId: id);
         },
+      ),
+      GoRoute(
+        path: '/saved-addresses',
+        name: 'savedAddresses',
+        builder: (context, state) => const SavedAddressesScreen(),
+      ),
+      GoRoute(
+        path: '/add-address',
+        name: 'addAddress',
+        builder: (context, state) => const AddAddressScreen(),
+      ),
+      GoRoute(
+        path: '/edit-profile',
+        name: 'editProfile',
+        builder: (context, state) => const EditProfileScreen(),
       ),
     ],
   );

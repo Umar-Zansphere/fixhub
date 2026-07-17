@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/config/theme/app_colors.dart';
 import '../../../../core/config/theme/app_spacing.dart';
+import '../../../../core/router/route_names.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../location/presentation/providers/location_provider.dart';
 
 /// Greeting header showing "Hello, {name}" with location indicator.
 class GreetingHeader extends ConsumerWidget {
@@ -11,7 +14,11 @@ class GreetingHeader extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authProvider);
+    final locationState = ref.watch(locationProvider);
     final userName = authState.user?.displayName ?? 'there';
+    final locationDisplay = locationState.currentPincode != null 
+        ? '${locationState.currentCity ?? 'Chennai'}, ${locationState.currentPincode}'
+        : 'Set Location';
 
     return Row(
       children: [
@@ -26,28 +33,37 @@ class GreetingHeader extends ConsumerWidget {
                     ),
               ),
               const SizedBox(height: AppSpacing.xxs),
-              Row(
-                children: [
-                  const Icon(
-                    Icons.location_on_outlined,
-                    size: 16,
-                    color: AppColors.textSecondary,
-                  ),
-                  const SizedBox(width: AppSpacing.xxs),
-                  Text(
-                    'Kolathur, Chennai',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                  ),
-                ],
+              GestureDetector(
+                onTap: () {
+                  context.push(RouteNames.setLocation);
+                },
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.location_on_outlined,
+                      size: 16,
+                      color: AppColors.textSecondary,
+                    ),
+                    const SizedBox(width: AppSpacing.xxs),
+                    Text(
+                      locationDisplay,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppColors.textSecondary,
+                            decoration: TextDecoration.underline,
+                            decorationColor: AppColors.textSecondary,
+                          ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
         ),
         // Profile avatar
         GestureDetector(
-          onTap: () {},
+          onTap: () {
+             context.push(RouteNames.profile);
+          },
           child: Container(
             width: AppSpacing.avatarSize,
             height: AppSpacing.avatarSize,

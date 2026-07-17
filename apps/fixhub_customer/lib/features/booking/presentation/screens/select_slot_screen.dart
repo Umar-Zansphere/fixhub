@@ -10,6 +10,7 @@ import '../../../../core/widgets/fixhub_button.dart';
 import '../../../../core/router/route_names.dart';
 import '../providers/booking_flow_provider.dart';
 import '../../data/models/time_slot_model.dart';
+import '../../../../core/widgets/fixhub_empty_state.dart';
 
 class SelectSlotScreen extends ConsumerStatefulWidget {
   const SelectSlotScreen({super.key});
@@ -23,56 +24,110 @@ class _SelectSlotScreenState extends ConsumerState<SelectSlotScreen> {
   TimeSlotModel? _selectedSlot;
   late List<DateTime> _availableDates;
 
+  // All possible slots (2-hour windows, 9am-7pm)
+  static const List<_RawSlot> _allSlots = [
+    _RawSlot(startHour: 9,  startMinute: 0,  label: '9:00 AM – 11:00 AM'),
+    _RawSlot(startHour: 11, startMinute: 0,  label: '11:00 AM – 1:00 PM'),
+    _RawSlot(startHour: 13, startMinute: 0,  label: '1:00 PM – 3:00 PM'),
+    _RawSlot(startHour: 15, startMinute: 0,  label: '3:00 PM – 5:00 PM'),
+    _RawSlot(startHour: 17, startMinute: 0,  label: '5:00 PM – 7:00 PM'),
+  ];
+
   @override
   void initState() {
     super.initState();
     _selectedDate = DateTime.now();
+    // Show next 30 days
     _availableDates = List.generate(
-      7,
+      30,
       (index) => DateTime.now().add(Duration(days: index)),
     );
   }
 
+  List<TimeSlotModel> _getSlotsForDate(DateTime date) {
+    final now = DateTime.now();
+    final isToday = DateUtils.isSameDay(date, now);
+
+    return _allSlots.map((raw) {
+      final slotStart = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        raw.startHour,
+        raw.startMinute,
+      );
+
+      // Mark past slots (+ 1 hour buffer) as unavailable for today
+      final isPast = isToday && slotStart.isBefore(now.add(const Duration(hours: 1)));
+
+      return TimeSlotModel(
+        date: date,
+        startTime: raw.label.split('–').first.trim(),
+        endTime: raw.label.split('–').last.trim(),
+        isAvailable: !isPast,
+      );
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final slots = TimeSlotModel.getMockSlots(_selectedDate);
+    final slots = _getSlotsForDate(_selectedDate);
+    final availableSlots = slots.where((s) => s.isAvailable).toList();
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: const FixHubAppBar(title: 'Select Time Slot'),
+      appBar: const FixHubAppBar(title: 'Choose a Time'),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Date Selector
+          // ── Calendar Header ─────────────────────────────────
           Padding(
-            padding: const EdgeInsets.all(AppSpacing.screenPadding),
-            child: Text(
-              'Select Date',
-              style: Theme.of(context).textTheme.headlineMedium,
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.screenPadding,
+              AppSpacing.md,
+              AppSpacing.screenPadding,
+              0,
+            ),
+            child: Row(
+              children: [
+                Text(
+                  DateFormat('MMMM yyyy').format(_selectedDate),
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                ),
+              ],
             ),
           ),
+          const SizedBox(height: AppSpacing.md),
+
+          // ── Horizontal Date Picker ───────────────────────────
           SizedBox(
-            height: 90,
-            child: ListView.separated(
+            height: 84,
+            child: ListView.builder(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(
                 horizontal: AppSpacing.screenPadding,
               ),
               itemCount: _availableDates.length,
-              separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.sm),
               itemBuilder: (context, index) {
                 final date = _availableDates[index];
                 final isSelected = DateUtils.isSameDay(date, _selectedDate);
+                final isToday = DateUtils.isSameDay(date, DateTime.now());
 
                 return GestureDetector(
                   onTap: () {
                     setState(() {
                       _selectedDate = date;
-                      _selectedSlot = null; // reset slot when date changes
+                      _selectedSlot = null;
                     });
                   },
-                  child: Container(
-                    width: 72,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeInOut,
+                    width: 60,
+                    margin: const EdgeInsets.only(right: AppSpacing.xs),
                     decoration: BoxDecoration(
                       color: isSelected
                           ? AppColors.buttonPrimary
@@ -82,39 +137,46 @@ class _SelectSlotScreenState extends ConsumerState<SelectSlotScreen> {
                         color: isSelected
                             ? AppColors.buttonPrimary
                             : AppColors.border,
-                        width: 0.5,
+                        width: 1,
                       ),
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          DateFormat('MMM').format(date),
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: isSelected
-                                    ? AppColors.textLight.withValues(alpha: 0.8)
-                                    : AppColors.textSecondary,
-                              ),
+                          DateFormat('E').format(date),
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: isSelected
+                                ? Colors.white.withValues(alpha: 0.75)
+                                : AppColors.textSecondary,
+                          ),
                         ),
-                        const SizedBox(height: AppSpacing.xs),
+                        const SizedBox(height: 4),
                         Text(
                           DateFormat('d').format(date),
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                color: isSelected
-                                    ? AppColors.textLight
-                                    : AppColors.textPrimary,
-                                fontWeight: FontWeight.bold,
-                              ),
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            color: isSelected
+                                ? Colors.white
+                                : AppColors.textPrimary,
+                          ),
                         ),
-                        const SizedBox(height: AppSpacing.xs),
-                        Text(
-                          DateFormat('E').format(date),
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: isSelected
-                                    ? AppColors.textLight.withValues(alpha: 0.8)
-                                    : AppColors.textSecondary,
-                              ),
-                        ),
+                        if (isToday) ...[
+                          const SizedBox(height: 3),
+                          Container(
+                            width: 5,
+                            height: 5,
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? Colors.white
+                                  : AppColors.buttonPrimary,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -123,83 +185,142 @@ class _SelectSlotScreenState extends ConsumerState<SelectSlotScreen> {
             ),
           ),
 
-          const SizedBox(height: AppSpacing.lg),
+          const SizedBox(height: AppSpacing.xl),
 
-          // Time Slots
+          // ── Time Slots Section ───────────────────────────────
           Padding(
-            padding: const EdgeInsets.all(AppSpacing.screenPadding),
-            child: Text(
-              'Select Time',
-              style: Theme.of(context).textTheme.headlineMedium,
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.screenPadding,
             ),
-          ),
-          Expanded(
-            child: GridView.builder(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.screenPadding,
-              ),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                childAspectRatio: 2.5,
-                crossAxisSpacing: AppSpacing.md,
-                mainAxisSpacing: AppSpacing.md,
-              ),
-              itemCount: slots.length,
-              itemBuilder: (context, index) {
-                final slot = slots[index];
-                final isSelected = _selectedSlot == slot;
-
-                return GestureDetector(
-                  onTap: slot.isAvailable
-                      ? () {
-                          setState(() {
-                            _selectedSlot = slot;
-                          });
-                        }
-                      : null,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? AppColors.surface
-                          : AppColors.elevatedSurface,
-                      borderRadius: AppRadius.buttonRadius,
-                      border: Border.all(
-                        color: isSelected
-                            ? AppColors.buttonPrimary
-                            : AppColors.border,
-                        width: isSelected ? 1.5 : 0.5,
+            child: Row(
+              children: [
+                Text(
+                  'Available Times',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
                       ),
-                    ),
-                    child: Center(
-                      child: Text(
-                        slot.formattedTime,
-                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                              color: slot.isAvailable
-                                  ? AppColors.textPrimary
-                                  : AppColors.textDisabled,
-                              fontWeight: isSelected ? FontWeight.bold : null,
-                            ),
-                      ),
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.xs,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '${availableSlots.length} slots',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
-                );
-              },
+                ),
+              ],
             ),
           ),
+          const SizedBox(height: AppSpacing.md),
 
+          Expanded(
+            child: slots.isEmpty || availableSlots.isEmpty
+                ? FixHubEmptyState(
+                    icon: Icons.event_busy_rounded,
+                    title: 'No slots available',
+                    message: availableSlots.isEmpty && slots.isNotEmpty
+                        ? 'All slots for today have passed. Please select a future date.'
+                        : 'No slots available for this date.',
+                  )
+                : ListView.separated(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.screenPadding,
+                    ),
+                    itemCount: slots.length,
+                    separatorBuilder: (_, __) =>
+                        const SizedBox(height: AppSpacing.sm),
+                    itemBuilder: (context, index) {
+                      final slot = slots[index];
+                      final isSelected = _selectedSlot == slot;
+                      final isPast = !slot.isAvailable;
+
+                      return _SlotTile(
+                        slot: slot,
+                        isSelected: isSelected,
+                        isPast: isPast,
+                        onTap: isPast
+                            ? null
+                            : () {
+                                setState(() {
+                                  _selectedSlot = slot;
+                                });
+                              },
+                      );
+                    },
+                  ),
+          ),
+
+          // ── CTA ─────────────────────────────────────────────
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(AppSpacing.screenPadding),
-              child: FixHubButton(
-                label: 'Continue to Summary',
-                onPressed: _selectedSlot != null
-                    ? () {
-                        ref
-                            .read(bookingFlowProvider.notifier)
-                            .setSlot(_selectedSlot!);
-                        context.push(RouteNames.bookingSummary);
-                      }
-                    : null,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_selectedSlot != null) ...[
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.md,
+                        vertical: AppSpacing.sm,
+                      ),
+                      margin: const EdgeInsets.only(bottom: AppSpacing.md),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: AppRadius.mediumRadius,
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.check_circle_rounded,
+                              size: 18, color: AppColors.success),
+                          const SizedBox(width: AppSpacing.xs),
+                          Text(
+                            'Selected: ${_selectedSlot!.formattedTime}',
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textPrimary,
+                                ),
+                          ),
+                          const Spacer(),
+                          Text(
+                            DateFormat('d MMM').format(_selectedDate),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  FixHubButton(
+                    label: 'Confirm & Continue',
+                    onPressed: _selectedSlot != null
+                        ? () {
+                            ref
+                                .read(bookingFlowProvider.notifier)
+                                .setSlot(_selectedSlot!);
+                            context.push(RouteNames.bookingSummary);
+                          }
+                        : null,
+                  ),
+                ],
               ),
             ),
           ),
@@ -207,4 +328,139 @@ class _SelectSlotScreenState extends ConsumerState<SelectSlotScreen> {
       ),
     );
   }
+}
+
+// ── Slot Tile ────────────────────────────────────────────────────
+
+class _SlotTile extends StatelessWidget {
+  const _SlotTile({
+    required this.slot,
+    required this.isSelected,
+    required this.isPast,
+    this.onTap,
+  });
+
+  final TimeSlotModel slot;
+  final bool isSelected;
+  final bool isPast;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeInOut,
+        height: 64,
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColors.buttonPrimary
+              : isPast
+                  ? AppColors.surface
+                  : AppColors.elevatedSurface,
+          borderRadius: AppRadius.mediumRadius,
+          border: Border.all(
+            color: isSelected ? AppColors.buttonPrimary : AppColors.border,
+            width: isSelected ? 1.5 : 1,
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+          child: Row(
+            children: [
+              Icon(
+                isPast
+                    ? Icons.block_rounded
+                    : isSelected
+                        ? Icons.check_circle_rounded
+                        : Icons.schedule_rounded,
+                size: 20,
+                color: isSelected
+                    ? Colors.white
+                    : isPast
+                        ? AppColors.textDisabled
+                        : AppColors.textSecondary,
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Text(
+                  slot.formattedTime,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight:
+                        isSelected ? FontWeight.w700 : FontWeight.w500,
+                    color: isSelected
+                        ? Colors.white
+                        : isPast
+                            ? AppColors.textDisabled
+                            : AppColors.textPrimary,
+                  ),
+                ),
+              ),
+              if (isPast)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.xs,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Text(
+                    'Unavailable',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: AppColors.textDisabled,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                )
+              else if (isSelected)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.xs,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    'Selected',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                )
+              else
+                Icon(
+                  Icons.chevron_right_rounded,
+                  size: 20,
+                  color: AppColors.textSecondary,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Internal raw slot data ────────────────────────────────────────
+
+class _RawSlot {
+  const _RawSlot({
+    required this.startHour,
+    required this.startMinute,
+    required this.label,
+  });
+
+  final int startHour;
+  final int startMinute;
+  final String label;
 }

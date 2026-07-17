@@ -85,7 +85,7 @@ class ProfileScreen extends ConsumerWidget {
                 ),
                 IconButton(
                   onPressed: () {
-                    // TODO: Navigate to edit profile
+                    context.push('/edit-profile');
                   },
                   icon: const Icon(
                     Icons.edit_outlined,
@@ -102,7 +102,7 @@ class ProfileScreen extends ConsumerWidget {
           _MenuItem(
             icon: Icons.person_outline_rounded,
             title: 'Personal Information',
-            onTap: () {},
+            onTap: () => context.push('/edit-profile'),
           ),
           _MenuItem(
             icon: Icons.history_rounded,
@@ -112,7 +112,7 @@ class ProfileScreen extends ConsumerWidget {
           _MenuItem(
             icon: Icons.location_on_outlined,
             title: 'Saved Addresses',
-            onTap: () {},
+            onTap: () => context.push('/saved-addresses'),
           ),
           _MenuItem(
             icon: Icons.help_outline_rounded,

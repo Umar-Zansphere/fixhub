@@ -24,6 +24,11 @@ class RouteNames {
   static const payment = '/booking/payment';
   static const bookingSuccess = '/booking/success';
 
+  // Location Routes
+  static const locationAccess = '/location/access';
+  static const setLocation = '/location/set';
+  static const serviceAreaNotCovered = '/location/not-covered';
+
   // Profile Routes
   static const editProfile = '/profile/edit';
   static const savedAddresses = '/profile/addresses';

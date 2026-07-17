@@ -6,17 +6,13 @@ import '../../../../core/config/theme/app_colors.dart';
 import '../../../../core/config/theme/app_radius.dart';
 import '../../../../core/config/theme/app_spacing.dart';
 import '../../../../core/widgets/fixhub_button.dart';
-import '../../../../core/widgets/fixhub_snackbar.dart';
 import '../../../../core/router/route_names.dart';
 import '../../../home/data/models/sub_service_model.dart';
 import '../../../home/presentation/providers/home_provider.dart';
 import '../../../booking/presentation/providers/booking_flow_provider.dart';
 
-/// Service detail provider — holds the selected service.
-final selectedServiceProvider = StateProvider<SubServiceModel?>((ref) => null);
-
-/// Service detail screen — shows full info and "Book Now" CTA.
-class ServiceDetailScreen extends ConsumerWidget {
+/// Service detail screen — shows full info, issue tags, and "Book Now" CTA.
+class ServiceDetailScreen extends ConsumerStatefulWidget {
   const ServiceDetailScreen({
     super.key,
     required this.serviceId,
@@ -25,18 +21,28 @@ class ServiceDetailScreen extends ConsumerWidget {
   final String serviceId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final service = ref.watch(selectedServiceProvider);
+  ConsumerState<ServiceDetailScreen> createState() => _ServiceDetailScreenState();
+}
 
-    if (service == null) {
-      return Scaffold(
-        backgroundColor: AppColors.background,
-        appBar: AppBar(backgroundColor: AppColors.background),
-        body: const Center(child: Text('Service not found')),
-      );
-    }
+class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
+  final Set<String> _selectedTags = {};
 
-    return Scaffold(
+  final List<String> _commonIssues = [
+    'Not turning on',
+    'Making noise',
+    'Water leakage',
+    'Cooling issue',
+    'Heating issue',
+    'Regular servicing',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final serviceAsync = ref.watch(serviceDetailProvider(widget.serviceId));
+
+    return serviceAsync.when(
+      data: (service) {
+        return Scaffold(
       backgroundColor: AppColors.background,
       body: CustomScrollView(
         slivers: [
@@ -143,10 +149,48 @@ class ServiceDetailScreen extends ConsumerWidget {
                     style: Theme.of(context).textTheme.headlineMedium,
                   ),
                   const SizedBox(height: AppSpacing.sm),
-                  _IncludedItem(text: 'Professional inspection & diagnosis'),
-                  _IncludedItem(text: 'Repair with quality parts'),
-                  _IncludedItem(text: '30-day service warranty'),
-                  _IncludedItem(text: 'Trained & verified technician'),
+                  const _IncludedItem(text: 'Professional inspection & diagnosis'),
+                  const _IncludedItem(text: 'Repair with quality parts'),
+                  const _IncludedItem(text: '30-day service warranty'),
+                  const _IncludedItem(text: 'Trained & verified technician'),
+
+                  const SizedBox(height: AppSpacing.xl),
+
+                  // Issue Tags (FR-2.4)
+                  Text(
+                    'What issue are you facing?',
+                    style: Theme.of(context).textTheme.headlineMedium,
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Wrap(
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.sm,
+                    children: _commonIssues.map((tag) {
+                      final isSelected = _selectedTags.contains(tag);
+                      return FilterChip(
+                        label: Text(tag),
+                        selected: isSelected,
+                        onSelected: (selected) {
+                          setState(() {
+                            if (selected) {
+                              _selectedTags.add(tag);
+                            } else {
+                              _selectedTags.remove(tag);
+                            }
+                          });
+                        },
+                        selectedColor: AppColors.buttonPrimary.withOpacity(0.1),
+                        checkmarkColor: AppColors.buttonPrimary,
+                        backgroundColor: AppColors.surface,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          side: BorderSide(
+                            color: isSelected ? AppColors.buttonPrimary : AppColors.border,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
 
                   const SizedBox(height: AppSpacing.xxl),
 
@@ -159,7 +203,7 @@ class ServiceDetailScreen extends ConsumerWidget {
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
+                      children: const [
                         _TrustItem(
                           icon: Icons.verified_user_outlined,
                           label: 'Verified',
@@ -199,8 +243,54 @@ class ServiceDetailScreen extends ConsumerWidget {
             label: 'Book Now — ${service.formattedPrice}',
             onPressed: () {
               ref.read(bookingFlowProvider.notifier).setService(service);
+              ref.read(bookingFlowProvider.notifier).setIssueTags(_selectedTags.toList());
               context.push(RouteNames.selectAddress);
             },
+          ),
+        ),
+      ),
+    );
+      },
+      loading: () => Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          backgroundColor: AppColors.background,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => context.pop(),
+          ),
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      ),
+      error: (err, _) => Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          backgroundColor: AppColors.background,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => context.pop(),
+          ),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 48, color: AppColors.error),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                'Service not found',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              ElevatedButton(
+                onPressed: () => ref.invalidate(serviceDetailProvider(widget.serviceId)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.buttonPrimary,
+                  foregroundColor: AppColors.textLight,
+                ),
+                child: const Text('Retry'),
+              ),
+            ],
           ),
         ),
       ),

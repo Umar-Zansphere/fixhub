@@ -43,7 +43,7 @@ class SupportScreen extends StatelessWidget {
               children: [
                 Container(
                   padding: const EdgeInsets.all(AppSpacing.sm),
-                  decoration: BoxDecoration(
+                  decoration: const BoxDecoration(
                     color: AppColors.surface,
                     shape: BoxShape.circle,
                   ),
@@ -83,7 +83,7 @@ class SupportScreen extends StatelessWidget {
               children: [
                 Container(
                   padding: const EdgeInsets.all(AppSpacing.sm),
-                  decoration: BoxDecoration(
+                  decoration: const BoxDecoration(
                     color: AppColors.surface,
                     shape: BoxShape.circle,
                   ),
@@ -123,7 +123,7 @@ class SupportScreen extends StatelessWidget {
               children: [
                 Container(
                   padding: const EdgeInsets.all(AppSpacing.sm),
-                  decoration: BoxDecoration(
+                  decoration: const BoxDecoration(
                     color: AppColors.surface,
                     shape: BoxShape.circle,
                   ),

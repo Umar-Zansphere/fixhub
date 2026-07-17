@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/config/theme/app_colors.dart';
 import '../../../../core/config/theme/app_radius.dart';
 import '../../../../core/config/theme/app_spacing.dart';
+import 'global_search_delegate.dart';
 
 /// Featured promotional banner — horizontal scrolling cards.
-class FeaturedBanner extends StatelessWidget {
+class FeaturedBanner extends ConsumerWidget {
   const FeaturedBanner({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return SizedBox(
       height: 160,
       child: ListView(
@@ -24,6 +26,13 @@ class FeaturedBanner extends StatelessWidget {
             backgroundColor: AppColors.buttonPrimary,
             textColor: AppColors.textLight,
             icon: Icons.air_rounded,
+            onTap: () {
+              showSearch(
+                context: context,
+                delegate: GlobalSearchDelegate(ref),
+                query: 'Fan',
+              );
+            },
           ),
           const SizedBox(width: AppSpacing.md),
           _BannerCard(
@@ -33,6 +42,13 @@ class FeaturedBanner extends StatelessWidget {
             backgroundColor: AppColors.surface,
             textColor: AppColors.textPrimary,
             icon: Icons.electrical_services_rounded,
+            onTap: () {
+              showSearch(
+                context: context,
+                delegate: GlobalSearchDelegate(ref),
+                query: 'Electrical',
+              );
+            },
           ),
         ],
       ),
@@ -48,6 +64,7 @@ class _BannerCard extends StatelessWidget {
     required this.backgroundColor,
     required this.textColor,
     required this.icon,
+    this.onTap,
   });
 
   final String title;
@@ -56,10 +73,13 @@ class _BannerCard extends StatelessWidget {
   final Color backgroundColor;
   final Color textColor;
   final IconData icon;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
       width: 280,
       padding: const EdgeInsets.all(AppSpacing.cardPadding),
       decoration: BoxDecoration(
@@ -104,6 +124,7 @@ class _BannerCard extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
           ),
         ],
+      ),
       ),
     );
   }

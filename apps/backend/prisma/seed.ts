@@ -253,6 +253,70 @@ async function main() {
       });
     }
     console.log(`  ✅ ${subServices.length} electrical sub-services seeded`);
+
+    // ── Layer 4: Technician for testing ───────────────────────
+    const technicianUser = await prisma.user.upsert({
+      where: { phone: '+918888888888' },
+      update: {},
+      create: {
+        phone: '+918888888888',
+        name: 'Test Technician',
+        email: 'technician@fixhub.in',
+        role: Role.TECHNICIAN,
+        isActive: true,
+      },
+    });
+
+    const technician = await prisma.technician.upsert({
+      where: { userId: technicianUser.id },
+      update: { isAvailable: true, verificationStatus: 'VERIFIED' },
+      create: {
+        userId: technicianUser.id,
+        isAvailable: true,
+        verificationStatus: 'VERIFIED',
+      },
+    });
+
+    const kolathurArea = await prisma.serviceArea.findUnique({
+      where: { pincode: '600099' }
+    });
+
+    if (kolathurArea) {
+      await prisma.technicianServiceArea.upsert({
+        where: {
+          technicianId_serviceAreaId: {
+            technicianId: technician.id,
+            serviceAreaId: kolathurArea.id,
+          }
+        },
+        update: {},
+        create: {
+          technicianId: technician.id,
+          serviceAreaId: kolathurArea.id,
+        }
+      });
+    }
+
+    const dbSubServices = await prisma.subService.findMany({
+      where: { categoryId: electrical.id }
+    });
+
+    for (const sub of dbSubServices) {
+      await prisma.technicianSpecialization.upsert({
+        where: {
+          technicianId_subServiceId: {
+            technicianId: technician.id,
+            subServiceId: sub.id,
+          }
+        },
+        update: {},
+        create: {
+          technicianId: technician.id,
+          subServiceId: sub.id,
+        }
+      });
+    }
+    console.log(`  ✅ Test technician seeded (mapped to Kolathur & ${dbSubServices.length} sub-services)`);
   }
 
   console.log('\n🎉 Database seed completed successfully!');

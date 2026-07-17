@@ -71,7 +71,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
               // Title
               Text(
-                'Enter your\nphone number',
+                'Welcome',
                 style: Theme.of(context).textTheme.displayLarge?.copyWith(
                       color: AppColors.textPrimary,
                       height: 1.2,
@@ -81,7 +81,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               const SizedBox(height: AppSpacing.sm),
 
               Text(
-                'We\'ll send you a 6-digit verification code',
+                'Login or register to continue',
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       color: AppColors.textSecondary,
                     ),
@@ -108,7 +108,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(
+                            const Text(
                               '🇮🇳',
                               style: TextStyle(fontSize: 20),
                             ),
@@ -185,7 +185,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
               // CTA
               FixHubButton(
-                label: 'Send OTP',
+                label: 'Continue',
                 onPressed: _isValid ? _sendOtp : null,
                 isLoading: authState.status == AuthStatus.loading,
               ),
@@ -194,7 +194,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
               // Terms
               Text(
-                'By continuing, you agree to our Terms of Service and Privacy Policy',
+                'By continuing, you agree to our Terms & Conditions and Privacy Policy',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: AppColors.textDisabled,
                     ),

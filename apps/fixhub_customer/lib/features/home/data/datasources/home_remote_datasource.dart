@@ -9,25 +9,40 @@ class HomeRemoteDataSource {
   /// GET /categories
   Future<List<dynamic>> getCategories() async {
     final response = await _dio.get(ApiEndpoints.categories);
-    final data = response.data;
-    // Unwrap API response envelope
-    if (data is Map && data.containsKey('data')) {
-      final result = data['data'];
-      return result is List ? result : [];
-    }
-    return data is List ? data : [];
+    return _extractList(response.data);
   }
 
-  /// GET /categories/:categoryId/sub-services
+  /// GET /services?categoryId=X
   Future<List<dynamic>> getSubServices(String categoryId) async {
     final response = await _dio.get(
       ApiEndpoints.categoryServices(categoryId),
     );
+    return _extractList(response.data);
+  }
+
+  /// GET /services/:id
+  Future<Map<String, dynamic>> getService(String id) async {
+    final response = await _dio.get(ApiEndpoints.subServiceDetail(id));
     final data = response.data;
-    if (data is Map && data.containsKey('data')) {
-      final result = data['data'];
-      return result is List ? result : [];
+    if (data is Map<String, dynamic> && data.containsKey('data')) {
+      return data['data'] as Map<String, dynamic>;
     }
-    return data is List ? data : [];
+    return data as Map<String, dynamic>;
+  }
+
+  List<dynamic> _extractList(dynamic data) {
+    if (data is Map && data.containsKey('data')) {
+      final innerData = data['data'];
+      if (innerData is Map && innerData.containsKey('items')) {
+        return innerData['items'] as List<dynamic>;
+      } else if (innerData is List) {
+        return innerData;
+      }
+    } else if (data is Map && data.containsKey('items')) {
+      return data['items'] as List<dynamic>;
+    } else if (data is List) {
+      return data;
+    }
+    return [];
   }
 }
