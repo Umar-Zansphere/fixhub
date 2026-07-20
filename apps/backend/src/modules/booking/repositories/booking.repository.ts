@@ -254,24 +254,24 @@ export class BookingRepository {
 
   updateLifecycleStatus(
     tx: PrismaTx,
-    bookingId: string,
+    id: string,
     dto: UpdateBookingStatusDto,
-    userId: string,
+    actorUserId: string,
   ) {
     return tx.booking.update({
-      where: { id: bookingId },
+      where: { id },
       data: {
         status: dto.status,
-        updatedBy: userId,
-        ...(dto.status === BookingStatus.COMPLETED && { completedAt: new Date() }),
         ...(dto.status === BookingStatus.CANCELLED && {
           cancelledAt: new Date(),
           cancelReason: dto.cancelReason,
         }),
+        ...(dto.status === BookingStatus.COMPLETED && { completedAt: new Date() }),
         ...(dto.status === BookingStatus.FAILED && {
           failedAt: new Date(),
           failureReason: dto.failureReason,
         }),
+        updatedBy: actorUserId,
       },
       include: {
         customer: { include: { user: { select: { name: true, phone: true } } } },
@@ -280,6 +280,28 @@ export class BookingRepository {
         address: true,
         timeline: { orderBy: { createdAt: 'desc' } },
         media: true,
+      },
+    });
+  }
+
+  assignTechnician(
+    tx: PrismaTx,
+    bookingId: string,
+    technicianId: string,
+    actorUserId: string,
+  ) {
+    return tx.booking.update({
+      where: { id: bookingId },
+      data: {
+        status: BookingStatus.ASSIGNED,
+        technicianId,
+        updatedBy: actorUserId,
+      },
+      include: {
+        customer: { select: { id: true, user: { select: { name: true, phone: true } } } },
+        technician: { select: { id: true, user: { select: { name: true, phone: true } } } },
+        subService: { include: { category: true } },
+        address: true,
       },
     });
   }

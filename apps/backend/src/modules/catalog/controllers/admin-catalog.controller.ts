@@ -15,6 +15,7 @@ import {
   CreateCategoryDto,
   CreateServiceDto,
   UpdateCategoryDto,
+  UpdatePricingDto,
   UpdateServiceDto,
 } from '../dto';
 import { CatalogService } from '../services/catalog.service';
@@ -76,6 +77,18 @@ export class AdminCatalogController {
     @Body() dto: UpdateServiceDto,
   ) {
     return this.catalogService.updateService(id, dto, user.userId);
+  }
+
+  @Patch('services/:id/pricing')
+  @ApiOperation({ summary: 'Update sub service pricing' })
+  @ApiParam({ name: 'id', description: 'Service id' })
+  @ApiResponse({ status: 200, description: 'Service pricing updated' })
+  updatePricing(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: UpdatePricingDto,
+  ) {
+    return this.catalogService.updatePricing(id, dto, user.userId);
   }
 
   @Delete('services/:id')

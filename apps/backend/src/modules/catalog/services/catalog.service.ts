@@ -185,6 +185,21 @@ export class CatalogService {
     return updated;
   }
 
+  async updatePricing(id: string, dto: { basePrice: number }, actorUserId: string) {
+    const existing = await this.catalogRepository.findServiceById(id, false);
+
+    if (!existing) {
+      throw new NotFoundException({
+        message: 'Service not found',
+        errorCode: ErrorCodes.SERVICE_NOT_FOUND,
+      });
+    }
+
+    const updated = await this.catalogRepository.updateService(id, { basePrice: dto.basePrice }, actorUserId);
+    await this.cacheService.invalidate();
+    return updated;
+  }
+
   async deleteService(id: string, actorUserId: string) {
     const existing = await this.catalogRepository.findServiceById(id, false);
 

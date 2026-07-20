@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -9,7 +9,7 @@ import {
 import { Role } from '@prisma/client';
 
 import { Roles } from '../../../common/decorators/roles.decorator';
-import { CreateServiceAreaDto, UpdateServiceAreaDto } from '../dto';
+import { CreateServiceAreaDto, ServiceAreaQueryDto, UpdateServiceAreaDto } from '../dto';
 import { ServiceAreaService } from '../services/service-area.service';
 
 @ApiTags('Admin Service Areas')
@@ -18,6 +18,12 @@ import { ServiceAreaService } from '../services/service-area.service';
 @Controller('admin/service-areas')
 export class AdminServiceAreaController {
   constructor(private readonly serviceAreaService: ServiceAreaService) {}
+
+  @Get()
+  @ApiOperation({ summary: 'List all service areas for admin' })
+  list(@Query() query: ServiceAreaQueryDto) {
+    return this.serviceAreaService.list({ ...query, publicOnly: false } as any);
+  }
 
   @Post()
   @ApiOperation({ summary: 'Create service area' })

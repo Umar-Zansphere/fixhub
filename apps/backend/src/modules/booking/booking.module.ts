@@ -27,6 +27,6 @@ import { BookingService } from './services/booking.service';
     BookingMediaRepository,
     BookingLockService,
   ],
-  exports: [BookingService],
+  exports: [BookingService, BookingLifecycleService],
 })
 export class BookingModule {}

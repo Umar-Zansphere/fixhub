@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
-import { ThrottlerGuard,ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 
 // Common modules
 import { ConfigModule } from './common/config/config.module';
@@ -15,12 +15,13 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
 import { QueueModule } from './common/queue/queue.module';
 import { RedisModule } from './common/redis/redis.module';
 import { StorageModule } from './common/storage/storage.module';
-import { AdminModule } from './modules/admin/admin.module';
 // Feature modules
+import { AdminModule } from './modules/admin/admin.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { BookingModule } from './modules/booking/booking.module';
 import { CatalogModule } from './modules/catalog/catalog.module';
 import { CustomerModule } from './modules/customer/customer.module';
+import { JobsModule } from './modules/jobs/jobs.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { PaymentModule } from './modules/payment/payment.module';
 import { ReportingModule } from './modules/reporting/reporting.module';
@@ -60,6 +61,7 @@ import { UsersModule } from './modules/users/users.module';
     ServiceAreaModule,
     AdminModule,
     ReportingModule,
+    JobsModule,
   ],
   providers: [
     // Global exception filter

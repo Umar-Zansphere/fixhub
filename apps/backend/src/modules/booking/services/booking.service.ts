@@ -225,6 +225,53 @@ export class BookingService {
     };
   }
 
+  async assignTechnician(bookingId: string, technicianId: string, actor: AuthenticatedUser) {
+    const booking = await this.bookingRepository.findById(bookingId);
+
+    if (!booking) {
+      throw new NotFoundException({
+        message: 'Booking not found',
+        errorCode: ErrorCodes.BOOKING_NOT_FOUND,
+      });
+    }
+
+    if (booking.status !== BookingStatus.CONFIRMED && booking.status !== BookingStatus.PENDING_PAYMENT) {
+      throw new BadRequestException({
+        message: 'Can only assign technicians to confirmed or pending payment bookings',
+        errorCode: ErrorCodes.BOOKING_INVALID_STATUS,
+      });
+    }
+
+    if (booking.technicianId === technicianId) {
+      throw new ConflictException({
+        message: 'Technician is already assigned to this booking',
+        errorCode: ErrorCodes.BOOKING_ALREADY_ASSIGNED,
+      });
+    }
+
+    const updated = await this.bookingRepository.transaction(async (tx) => {
+      const assigned = await this.bookingRepository.assignTechnician(
+        tx,
+        bookingId,
+        technicianId,
+        actor.userId,
+      );
+
+      await this.bookingRepository.createTimelineEntry(tx, {
+        bookingId,
+        status: BookingStatus.ASSIGNED,
+        changedByUserId: actor.userId,
+        note: `Admin assigned technician to booking`,
+      });
+
+      return assigned;
+    });
+
+    await this.bookingQueryCacheService.invalidate();
+
+    return updated;
+  }
+
   private async validateCreationContext(user: AuthenticatedUser, dto: CreateBookingDto) {
     const customer = await this.validateCustomer(user);
     const address = await this.bookingRepository.findAddressForCustomer(customer.id, dto.addressId);
