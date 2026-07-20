@@ -4,10 +4,10 @@ import 'package:hive_flutter/hive_flutter.dart';
 final localStorageProvider = Provider<LocalStorage>((ref) => LocalStorage());
 
 class LocalStorage {
-  static const String _tokenBox = 'auth_tokens';
+  static const String _tokenBox = 'partner_auth_tokens';
   static const String _accessTokenKey = 'access_token';
   static const String _refreshTokenKey = 'refresh_token';
-  static const String _userBox = 'user_data';
+  static const String _userBox = 'partner_user_data';
 
   Future<Box> _getBox(String name) async {
     if (Hive.isBoxOpen(name)) {
@@ -16,7 +16,10 @@ class LocalStorage {
     return Hive.openBox(name);
   }
 
-  Future<void> saveTokens({required String accessToken, required String refreshToken}) async {
+  Future<void> saveTokens({
+    required String accessToken,
+    required String refreshToken,
+  }) async {
     final box = await _getBox(_tokenBox);
     await box.put(_accessTokenKey, accessToken);
     await box.put(_refreshTokenKey, refreshToken);
@@ -24,12 +27,12 @@ class LocalStorage {
 
   Future<String?> getAccessToken() async {
     final box = await _getBox(_tokenBox);
-    return box.get(_accessTokenKey);
+    return box.get(_accessTokenKey) as String?;
   }
 
   Future<String?> getRefreshToken() async {
     final box = await _getBox(_tokenBox);
-    return box.get(_refreshTokenKey);
+    return box.get(_refreshTokenKey) as String?;
   }
 
   Future<void> clearTokens() async {
@@ -56,6 +59,6 @@ class LocalStorage {
 
   Future<bool> isLoggedIn() async {
     final token = await getAccessToken();
-    return token != null;
+    return token != null && token.isNotEmpty;
   }
 }

@@ -1,4 +1,4 @@
-/// Base failure class for the domain layer
+/// Base failure class for domain layer errors.
 sealed class Failure implements Exception {
   final String message;
   final String? errorCode;

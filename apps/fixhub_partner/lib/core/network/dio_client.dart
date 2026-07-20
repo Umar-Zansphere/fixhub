@@ -20,10 +20,9 @@ final dioProvider = Provider<Dio>((ref) {
   dio.interceptors.addAll([
     AuthInterceptor(ref),
     ErrorInterceptor(),
-    if (AppConfig.apiBaseUrl.contains('localhost')) LogInterceptor(
-      requestBody: true,
-      responseBody: true,
-    ),
+    if (AppConfig.apiBaseUrl.contains('localhost') ||
+        AppConfig.apiBaseUrl.contains('10.0.2.2'))
+      LogInterceptor(requestBody: true, responseBody: true, error: true),
   ]);
 
   return dio;

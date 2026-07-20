@@ -1,22 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/config/theme/app_theme.dart';
-import 'core/router/app_router.dart';
+import 'core/routing/app_router.dart';
 
-class FixHubTechApp extends ConsumerWidget {
-  const FixHubTechApp({super.key});
+class App extends ConsumerWidget {
+  const App({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final router = ref.watch(routerProvider);
-
     return MaterialApp.router(
-      title: 'FixHub Technician',
-      debugShowCheckedModeBanner: false,
+      title: 'FixHub Partner',
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.system,
-      routerConfig: router,
+      themeMode: ThemeMode.light, // MVP forces light theme
+      routerConfig: appRouter,
+      debugShowCheckedModeBanner: false,
     );
   }
 }
