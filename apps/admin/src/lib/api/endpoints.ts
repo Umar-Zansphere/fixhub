@@ -1,28 +1,85 @@
 export const endpoints = {
   // Auth
   auth: {
-    sendOtp: '/auth/otp/send',
-    verifyOtp: '/auth/otp/verify',
+    sendOtp: '/auth/send-otp',
+    verifyOtp: '/auth/verify-otp',
     refresh: '/auth/refresh',
     logout: '/auth/logout',
+    me: '/auth/me',
   },
 
-  // Admin
+  // Admin — Dashboard
   admin: {
     dashboard: '/admin/dashboard',
+
+    // Customers
+    customers: '/admin/customers',
+    customer: (id: string) => `/admin/customers/${id}`,
+    customerStatus: (userId: string) => `/admin/customers/${userId}/status`,
+
+    // Technicians
     technicians: '/admin/technicians',
     technician: (id: string) => `/admin/technicians/${id}`,
-    categories: '/admin/categories',
-    category: (id: string) => `/admin/categories/${id}`,
-    serviceAreas: '/admin/service-areas',
-    serviceArea: (id: string) => `/admin/service-areas/${id}`,
-    bookings: '/admin/bookings',
-    booking: (id: string) => `/admin/bookings/${id}`,
-    assignTechnician: (bookingId: string) => `/admin/bookings/${bookingId}/assign`,
+    technicianStatus: (userId: string) => `/admin/technicians/${userId}/status`,
+    technicianVerify: (id: string) => `/admin/technicians/${id}/verify`,
+  },
+
+  // Bookings (admin)
+  bookings: {
+    list: '/admin/bookings',
+    history: '/admin/bookings/history',
+    detail: (id: string) => `/admin/bookings/${id}`,
+    assign: (id: string) => `/admin/bookings/${id}/assign`,
+  },
+
+  // Catalog (public GET, admin mutations)
+  catalog: {
+    categories: '/catalog/categories',
+    category: (id: string) => `/catalog/categories/${id}`,
+    services: '/catalog/services',
+    service: (id: string) => `/catalog/services/${id}`,
+    // Admin CRUD
+    createCategory: '/admin/categories',
+    updateCategory: (id: string) => `/admin/categories/${id}`,
+    deleteCategory: (id: string) => `/admin/categories/${id}`,
+    createService: '/admin/services',
+    updateService: (id: string) => `/admin/services/${id}`,
+    updatePricing: (id: string) => `/admin/services/${id}/pricing`,
+    deleteService: (id: string) => `/admin/services/${id}`,
+  },
+
+  // Service Areas
+  serviceAreas: {
+    list: '/admin/service-areas',
+    create: '/admin/service-areas',
+    update: (id: string) => `/admin/service-areas/${id}`,
+    delete: (id: string) => `/admin/service-areas/${id}`,
+  },
+
+  // Payments
+  payments: {
+    list: '/admin/bookings', // payments are fetched via bookings
+    refund: (id: string) => `/admin/payments/${id}/refund`,
   },
 
   // Reports
   reports: {
-    bookingSummary: '/reports/bookings/summary',
+    revenue: '/reports/revenue',
+    bookings: '/reports/bookings',
+    customers: '/reports/customers',
+    technicians: '/reports/technicians',
+    payments: '/reports/payments',
+    cancellations: '/reports/cancellations',
+    growth: '/reports/growth',
+  },
+
+  // Notifications
+  notifications: {
+    list: '/notifications',
+    send: '/notifications/send',
+    markRead: (id: string) => `/notifications/${id}/read`,
+    markAllRead: '/notifications/read-all',
+    template: (key: string) => `/notifications/templates/${key}`,
+    preferences: '/notifications/preferences',
   },
 } as const;

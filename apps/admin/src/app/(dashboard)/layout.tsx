@@ -1,42 +1,41 @@
+'use client';
+
+import * as React from 'react';
+
+import { CommandPalette } from '@/components/layout/command-palette';
+import { Header } from '@/components/layout/header';
+import { Sidebar } from '@/components/layout/sidebar';
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const [commandOpen, setCommandOpen] = React.useState(false);
+
+  // Global Ctrl+K shortcut
+  React.useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setCommandOpen((v) => !v);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
   return (
-    <div className="flex min-h-screen">
+    <div className="flex h-screen overflow-hidden bg-[#F8F8F7]">
       {/* Sidebar */}
-      <aside className="hidden w-64 border-r bg-white lg:block">
-        <div className="flex h-16 items-center border-b px-6">
-          <h1 className="text-xl font-bold text-blue-600">FixHub</h1>
-        </div>
-        <nav className="space-y-1 p-4">
-          {[
-            { label: 'Dashboard', href: '/dashboard' },
-            { label: 'Bookings', href: '/dashboard/bookings' },
-            { label: 'Technicians', href: '/dashboard/technicians' },
-            { label: 'Categories', href: '/dashboard/categories' },
-            { label: 'Service Areas', href: '/dashboard/service-areas' },
-            { label: 'Settings', href: '/dashboard/settings' },
-          ].map((item) => (
-            <a
-              key={item.href}
-              href={item.href}
-              className="block rounded-lg px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-100 hover:text-blue-600"
-            >
-              {item.label}
-            </a>
-          ))}
-        </nav>
-      </aside>
+      <Sidebar />
 
-      {/* Main content */}
-      <main className="flex-1">
-        {/* Header */}
-        <header className="flex h-16 items-center justify-between border-b bg-white px-6">
-          <h2 className="text-lg font-semibold">Admin Panel</h2>
-          {/* TODO: Add user menu, notifications */}
-        </header>
+      {/* Main */}
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <Header onCommandPalette={() => setCommandOpen(true)} />
+        <main className="flex-1 overflow-y-auto p-6">
+          {children}
+        </main>
+      </div>
 
-        {/* Page content */}
-        <div className="p-6">{children}</div>
-      </main>
+      {/* Command Palette */}
+      <CommandPalette open={commandOpen} onClose={() => setCommandOpen(false)} />
     </div>
   );
 }
