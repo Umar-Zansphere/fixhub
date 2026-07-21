@@ -11,7 +11,7 @@ import { BookingStatus, Role } from '@prisma/client';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 import { AuthenticatedUser } from '../../../common/interfaces/auth.interface';
 import { StorageService } from '../../../common/storage/storage.service';
-import { BookingSummaryDto, ConfirmBookingDto, CreateBookingDto, CreateBookingMediaDto } from '../dto';
+import { BookingSummaryDto, ConfirmBookingDto, CreateBookingDto, CreateBookingMediaDto, CreateReviewDto, ProposeRevisionDto } from '../dto';
 import { BookingRepository } from '../repositories/booking.repository';
 import { BookingLockService } from './booking-lock.service';
 import { BookingQueryCacheService } from './booking-query-cache.service';
@@ -44,7 +44,13 @@ export class BookingService {
 
   async getSummary(user: AuthenticatedUser, dto: BookingSummaryDto) {
     const context = await this.validateCreationContext(user, dto);
-    await this.ensureSlotAvailable(context.address.id, context.scheduledDate, dto.scheduledSlot);
+    await this.ensureSlotAvailable(
+      context.serviceArea.id,
+      context.service.id,
+      context.address.id,
+      context.scheduledDate,
+      dto.scheduledSlot,
+    );
 
     return this.buildSummary(dto, context);
   }
@@ -62,7 +68,13 @@ export class BookingService {
     }
 
     try {
-      await this.ensureSlotAvailable(context.address.id, context.scheduledDate, dto.scheduledSlot);
+      await this.ensureSlotAvailable(
+        context.serviceArea.id,
+        context.service.id,
+        context.address.id,
+        context.scheduledDate,
+        dto.scheduledSlot,
+      );
       const bookingNumber = await this.bookingLockService.nextBookingNumber(new Date());
 
       const booking = await this.bookingRepository.transaction((tx) =>
@@ -135,6 +147,8 @@ export class BookingService {
 
     try {
       await this.ensureSlotAvailable(
+        context.serviceArea.id,
+        context.service.id,
         context.address.id,
         context.scheduledDate,
         scheduledSlot,
@@ -272,6 +286,127 @@ export class BookingService {
     return updated;
   }
 
+  async submitReview(user: AuthenticatedUser, bookingId: string, dto: CreateReviewDto) {
+    const customer = await this.validateCustomer(user);
+    const booking = await this.bookingRepository.findById(bookingId);
+
+    if (!booking || booking.customerId !== customer.id) {
+      throw new NotFoundException({ message: 'Booking not found', errorCode: ErrorCodes.BOOKING_NOT_FOUND });
+    }
+
+    if (booking.status !== BookingStatus.COMPLETED) {
+      throw new BadRequestException({
+        message: 'Reviews can only be submitted for completed bookings',
+        errorCode: ErrorCodes.BOOKING_INVALID_STATUS,
+      });
+    }
+
+    if (booking.review) {
+      throw new ConflictException({ message: 'This booking has already been reviewed' });
+    }
+
+    if (!booking.technicianId) {
+      throw new BadRequestException({ message: 'No technician assigned to this booking' });
+    }
+
+    const review = await this.bookingRepository.createReview(
+      bookingId,
+      customer.id,
+      booking.technicianId,
+      dto.rating,
+      dto.comment,
+    );
+
+    await this.bookingQueryCacheService.invalidate();
+    return review;
+  }
+
+  async proposeRevision(user: AuthenticatedUser, bookingId: string, dto: ProposeRevisionDto) {
+    const technicianId = await this.resolveLinkedTechnicianId(user);
+    const booking = await this.bookingRepository.findById(bookingId);
+
+    if (!booking || booking.technicianId !== technicianId) {
+      throw new NotFoundException({ message: 'Job not found', errorCode: ErrorCodes.BOOKING_NOT_FOUND });
+    }
+
+    if (booking.status !== BookingStatus.IN_PROGRESS) {
+      throw new BadRequestException({
+        message: 'Price revision can only be proposed when job is IN_PROGRESS',
+        errorCode: ErrorCodes.BOOKING_INVALID_STATUS,
+      });
+    }
+
+    const updated = await this.bookingRepository.transaction((tx) =>
+      this.bookingRepository.setPriceRevision(tx, bookingId, dto.revisedAmount, dto.note, user.userId),
+    );
+
+    await this.bookingQueryCacheService.invalidate();
+    return updated;
+  }
+
+  async approveRevision(user: AuthenticatedUser, bookingId: string) {
+    const customer = await this.validateCustomer(user);
+    const booking = await this.bookingRepository.findById(bookingId);
+
+    if (!booking || booking.customerId !== customer.id) {
+      throw new NotFoundException({ message: 'Booking not found', errorCode: ErrorCodes.BOOKING_NOT_FOUND });
+    }
+
+    if (booking.status !== BookingStatus.PRICE_REVISION_PENDING) {
+      throw new BadRequestException({
+        message: 'No pending price revision for this booking',
+        errorCode: ErrorCodes.BOOKING_INVALID_STATUS,
+      });
+    }
+
+    const updated = await this.bookingRepository.transaction((tx) =>
+      this.bookingRepository.approveRevision(tx, bookingId, user.userId),
+    );
+
+    await this.bookingQueryCacheService.invalidate();
+    return updated;
+  }
+
+  async rejectRevision(user: AuthenticatedUser, bookingId: string) {
+    const customer = await this.validateCustomer(user);
+    const booking = await this.bookingRepository.findById(bookingId);
+
+    if (!booking || booking.customerId !== customer.id) {
+      throw new NotFoundException({ message: 'Booking not found', errorCode: ErrorCodes.BOOKING_NOT_FOUND });
+    }
+
+    if (booking.status !== BookingStatus.PRICE_REVISION_PENDING) {
+      throw new BadRequestException({
+        message: 'No pending price revision for this booking',
+        errorCode: ErrorCodes.BOOKING_INVALID_STATUS,
+      });
+    }
+
+    const updated = await this.bookingRepository.transaction((tx) =>
+      this.bookingRepository.updateLifecycleStatus(
+        tx,
+        bookingId,
+        { status: BookingStatus.CANCELLED, cancelReason: 'Customer rejected technician price revision' },
+        user.userId,
+      ),
+    );
+
+    await this.bookingQueryCacheService.invalidate();
+    return updated;
+  }
+
+  /** Resolve the technician profile ID for a technician-role user. */
+  private async resolveLinkedTechnicianId(user: AuthenticatedUser): Promise<string> {
+    if (user.role !== Role.TECHNICIAN) {
+      throw new ForbiddenException({ message: 'Only technicians can perform this action', errorCode: ErrorCodes.AUTH_FORBIDDEN });
+    }
+    const technician = await this.bookingRepository.findTechnicianProfileByUserId(user.userId);
+    if (!technician) {
+      throw new NotFoundException({ message: 'Technician profile not found', errorCode: ErrorCodes.TECHNICIAN_NOT_FOUND });
+    }
+    return technician.id;
+  }
+
   private async validateCreationContext(user: AuthenticatedUser, dto: CreateBookingDto) {
     const customer = await this.validateCustomer(user);
     const address = await this.bookingRepository.findAddressForCustomer(customer.id, dto.addressId);
@@ -331,12 +466,65 @@ export class BookingService {
     return serviceArea;
   }
 
+  async getAvailableSlots(query: import('../dto/create-booking.dto').AvailableSlotsQueryDto) {
+    const serviceArea = await this.requireServiceArea(query.pincode);
+    const capacity = await this.bookingRepository.countServiceCapacity(
+      serviceArea.id,
+      query.subServiceId,
+    );
+
+    if (capacity === 0) {
+      return [];
+    }
+
+    const scheduledDate = new Date(`${query.date}T00:00:00.000Z`);
+    const slots = [
+      '09:00-11:00',
+      '11:00-13:00',
+      '13:00-15:00',
+      '15:00-17:00',
+      '17:00-19:00',
+    ];
+
+    const availableSlots: string[] = [];
+    const draftCreatedAfter = new Date(Date.now() - DRAFT_TTL_SECONDS * 1000);
+
+    for (const slot of slots) {
+      // Check if the slot is in the past
+      const [startHour, startMinute] = slot.split('-')[0].split(':').map(Number);
+      const slotTime = new Date(scheduledDate);
+      slotTime.setUTCHours(startHour, startMinute);
+      
+      // If it's today and the slot is in the past (adding 1 hour buffer for now), skip
+      if (slotTime.getTime() < Date.now() + 60 * 60 * 1000) {
+        continue;
+      }
+
+      const activeBookings = await this.bookingRepository.countSlotBookings(
+        serviceArea.id,
+        query.subServiceId,
+        scheduledDate,
+        slot,
+        draftCreatedAfter,
+      );
+
+      if (activeBookings < capacity) {
+        availableSlots.push(slot);
+      }
+    }
+
+    return availableSlots;
+  }
+
   private async ensureSlotAvailable(
+    serviceAreaId: string,
+    subServiceId: string,
     addressId: string,
     scheduledDate: Date,
     scheduledSlot: string,
     excludeBookingId?: string,
   ) {
+    // 1. Check if the customer's address is already booked
     const conflicts = await this.bookingRepository.countSlotConflicts({
       addressId,
       scheduledDate,
@@ -347,9 +535,50 @@ export class BookingService {
 
     if (conflicts > 0) {
       throw new ConflictException({
-        message: 'Selected slot is unavailable',
+        message: 'You already have a booking at this time',
         errorCode: ErrorCodes.BOOKING_SLOT_UNAVAILABLE,
       });
+    }
+
+    // 2. Check if the system has capacity
+    const capacity = await this.bookingRepository.countServiceCapacity(serviceAreaId, subServiceId);
+    if (capacity === 0) {
+      throw new ConflictException({
+        message: 'No technicians are available in your area for this service',
+        errorCode: ErrorCodes.BOOKING_SLOT_UNAVAILABLE,
+      });
+    }
+
+    const activeBookings = await this.bookingRepository.countSlotBookings(
+      serviceAreaId,
+      subServiceId,
+      scheduledDate,
+      scheduledSlot,
+      new Date(Date.now() - DRAFT_TTL_SECONDS * 1000),
+    );
+
+    // activeBookings includes the current booking if it's a DRAFT and we're confirming,
+    // so we need to account for excludeBookingId if we were counting the same booking.
+    // Since countSlotBookings doesn't take excludeBookingId, we could have a false positive
+    // if a user is confirming their own draft and that draft brings activeBookings == capacity.
+    // Actually, countSlotBookings counts all bookings. If the user is confirming their draft,
+    // the draft is ALREADY in activeBookings. 
+    // Thus activeBookings <= capacity is fine if we are confirming.
+    // If it's a new draft, we need activeBookings < capacity.
+    if (excludeBookingId) {
+      if (activeBookings > capacity) {
+        throw new ConflictException({
+          message: 'Selected slot is no longer available',
+          errorCode: ErrorCodes.BOOKING_SLOT_UNAVAILABLE,
+        });
+      }
+    } else {
+      if (activeBookings >= capacity) {
+        throw new ConflictException({
+          message: 'Selected slot is no longer available',
+          errorCode: ErrorCodes.BOOKING_SLOT_UNAVAILABLE,
+        });
+      }
     }
   }
 

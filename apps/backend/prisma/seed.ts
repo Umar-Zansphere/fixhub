@@ -1,4 +1,5 @@
 import { PrismaClient, Role } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
@@ -127,13 +128,17 @@ async function main() {
 
   // ── Layer 1: Admin User ───────────────────────────────────
 
+  const adminPassword = await bcrypt.hash('admin123', 10);
   const adminUser = await prisma.user.upsert({
     where: { phone: '+919999999999' },
-    update: {},
+    update: {
+      password: adminPassword,
+    },
     create: {
       phone: '+919999999999',
       name: 'FixHub Admin',
       email: 'admin@fixhub.in',
+      password: adminPassword,
       role: Role.ADMIN,
       isActive: true,
     },

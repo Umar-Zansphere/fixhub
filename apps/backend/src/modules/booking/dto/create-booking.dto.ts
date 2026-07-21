@@ -43,3 +43,18 @@ export class ConfirmBookingDto {
   @Type(() => CreateBookingDto)
   booking?: CreateBookingDto;
 }
+
+export class AvailableSlotsQueryDto {
+  @ApiProperty({ example: 'sub-service-uuid' })
+  @IsUUID()
+  subServiceId!: string;
+
+  @ApiProperty({ example: '600099' })
+  @IsString()
+  @MaxLength(10)
+  pincode!: string;
+
+  @ApiProperty({ example: '2026-07-20' })
+  @IsDateString()
+  date!: string;
+}

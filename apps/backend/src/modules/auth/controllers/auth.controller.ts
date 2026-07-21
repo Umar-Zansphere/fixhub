@@ -7,8 +7,10 @@ import {
   HttpStatus,
   Post,
   Req,
+  Res,
   UseGuards,
 } from '@nestjs/common';
+import { Response } from 'express';
 import {
   ApiBearerAuth,
   ApiBody,
@@ -18,10 +20,12 @@ import {
 } from '@nestjs/swagger';
 import { Request } from 'express';
 
+import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { Public } from '../../../common/decorators/public.decorator';
 import { AuthenticatedUser } from '../../../common/interfaces/auth.interface';
 import {
+  AdminLoginDto,
   RefreshTokenDto,
   RegisterDeviceDto,
   SendOtpDto,
@@ -37,6 +41,7 @@ export class AuthController {
   // ── POST /auth/send-otp ───────────────────────────────────
 
   @Public()
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
   @Post('send-otp')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -53,6 +58,7 @@ export class AuthController {
   // ── POST /auth/verify-otp ────────────────────────────────
 
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('verify-otp')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -67,6 +73,44 @@ export class AuthController {
   @ApiResponse({ status: 400, description: 'Too many attempts' })
   async verifyOtp(@Body() dto: VerifyOtpDto) {
     return this.authService.verifyOtp(dto);
+  }
+
+  // ── POST /auth/admin/login ───────────────────────────────
+
+  @Public()
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Post('admin/login')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Admin login',
+    description: 'Authenticates an admin user with email and password.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Authentication successful. Returns tokens and user profile.',
+  })
+  @ApiResponse({ status: 401, description: 'Invalid credentials' })
+  async adminLogin(@Body() dto: AdminLoginDto, @Res({ passthrough: true }) res: Response) {
+    const result = await this.authService.adminLogin(dto);
+    
+    // Set HttpOnly cookies for web admin
+    res.cookie('accessToken', result.accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 15 * 60 * 1000, // 15 minutes
+    });
+
+    res.cookie('refreshToken', result.refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/api/v1/auth/refresh', // Or '/' if we want it sent everywhere
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+
+    return result;
   }
 
   // ── POST /auth/refresh ───────────────────────────────────
@@ -98,9 +142,19 @@ export class AuthController {
   async logout(
     @CurrentUser() user: AuthenticatedUser,
     @Headers('authorization') authHeader: string,
+    @Res({ passthrough: true }) res: Response,
+    @Req() req: Request,
   ) {
-    // Extract the raw JWT from "Bearer <token>"
-    const accessToken = authHeader?.replace('Bearer ', '');
+    // Clear cookies for web admin
+    res.clearCookie('accessToken', { path: '/' });
+    res.clearCookie('refreshToken', { path: '/api/v1/auth/refresh' });
+
+    // Extract the raw JWT from "Bearer <token>" or from cookie
+    let accessToken = authHeader?.replace('Bearer ', '');
+    if (!accessToken && req.cookies?.accessToken) {
+      accessToken = req.cookies.accessToken;
+    }
+    
     return this.authService.logout(user.userId, accessToken);
   }
 

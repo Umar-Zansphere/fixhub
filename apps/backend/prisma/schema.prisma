@@ -44,9 +44,17 @@ enum BookingStatus {
   EN_ROUTE
   ARRIVED
   IN_PROGRESS
+  PRICE_REVISION_PENDING // Technician proposed a revised price; awaiting customer consent
   COMPLETED
   CANCELLED
   FAILED
+}
+
+enum JobOfferStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
 }
 
 enum PaymentStatus {
@@ -132,6 +140,7 @@ model User {
   id        String    @id @default(uuid()) @db.Uuid
   phone     String    @unique
   email     String?   @unique
+  password  String?
   name      String?
   role      Role
   isActive  Boolean   @default(true) @map("is_active")
@@ -198,8 +207,8 @@ model DeviceToken {
 /// Granular permission for RBAC.
 /// Allows admin panel to manage fine-grained access.
 model Permission {
-  id          String @id @default(uuid()) @db.Uuid
-  action      String @unique // e.g., "booking:create", "technician:verify"
+  id          String  @id @default(uuid()) @db.Uuid
+  action      String  @unique // e.g., "booking:create", "technician:verify"
   description String?
 
   rolePermissions RolePermission[]
@@ -300,6 +309,7 @@ model Technician {
   documents       TechnicianDocument[]
   bookings        Booking[]
   reviews         Review[]
+  jobOffers       JobOffer[]
 
   @@index([isAvailable, verificationStatus])
   @@index([deletedAt])
@@ -341,17 +351,17 @@ model TechnicianSpecialization {
 /// documentType enum for strong typing.
 /// verifiedAt + verifiedBy for audit trail.
 model TechnicianDocument {
-  id           String       @id @default(uuid()) @db.Uuid
-  technicianId String       @map("technician_id") @db.Uuid
-  documentType DocumentType @map("document_type")
-  url          String
-  s3Key        String       @map("s3_key")
-  isVerified   Boolean      @default(false) @map("is_verified")
-  verifiedAt   DateTime?    @map("verified_at")
-  verifiedBy   String?      @map("verified_by") @db.Uuid // admin userId
-  rejectionNote String?     @map("rejection_note")
-  createdAt    DateTime     @default(now()) @map("created_at")
-  updatedAt    DateTime     @updatedAt @map("updated_at")
+  id            String       @id @default(uuid()) @db.Uuid
+  technicianId  String       @map("technician_id") @db.Uuid
+  documentType  DocumentType @map("document_type")
+  url           String
+  s3Key         String       @map("s3_key")
+  isVerified    Boolean      @default(false) @map("is_verified")
+  verifiedAt    DateTime?    @map("verified_at")
+  verifiedBy    String?      @map("verified_by") @db.Uuid // admin userId
+  rejectionNote String?      @map("rejection_note")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
 
   technician Technician @relation(fields: [technicianId], references: [id], onDelete: Cascade)
 
@@ -369,7 +379,7 @@ model TechnicianDocument {
 /// Expandable to GeoJSON polygons in the future.
 model ServiceArea {
   id        String    @id @default(uuid()) @db.Uuid
-  name      String    // e.g., "Kolathur"
+  name      String // e.g., "Kolathur"
   pincode   String    @unique
   city      String
   state     String
@@ -378,7 +388,8 @@ model ServiceArea {
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
 
-  technicians TechnicianServiceArea[]
+  technicians     TechnicianServiceArea[]
+  subServiceAreas SubServiceArea[]
 
   @@index([city])
   @@index([isActive])
@@ -412,25 +423,26 @@ model Category {
 /// e.g., Fan Repair (under Electrical)
 /// Decimal for basePrice — never Float for money.
 model SubService {
-  id                   String    @id @default(uuid()) @db.Uuid
-  categoryId           String    @map("category_id") @db.Uuid
-  name                 String
-  slug                 String    @unique
-  description          String?
-  basePrice            Decimal   @map("base_price") @db.Decimal(10, 2)
-  estimatedDurationMins Int      @map("estimated_duration_mins") // in minutes
-  iconUrl              String?   @map("icon_url")
-  isActive             Boolean   @default(true) @map("is_active")
-  sortOrder            Int       @default(0) @map("sort_order")
-  deletedAt            DateTime? @map("deleted_at")
-  createdAt            DateTime  @default(now()) @map("created_at")
-  updatedAt            DateTime  @updatedAt @map("updated_at")
-  createdBy            String?   @map("created_by") @db.Uuid
-  updatedBy            String?   @map("updated_by") @db.Uuid
+  id                    String    @id @default(uuid()) @db.Uuid
+  categoryId            String    @map("category_id") @db.Uuid
+  name                  String
+  slug                  String    @unique
+  description           String?
+  basePrice             Decimal   @map("base_price") @db.Decimal(10, 2)
+  estimatedDurationMins Int       @map("estimated_duration_mins") // in minutes
+  iconUrl               String?   @map("icon_url")
+  isActive              Boolean   @default(true) @map("is_active")
+  sortOrder             Int       @default(0) @map("sort_order")
+  deletedAt             DateTime? @map("deleted_at")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+  createdBy             String?   @map("created_by") @db.Uuid
+  updatedBy             String?   @map("updated_by") @db.Uuid
 
   category        Category                   @relation(fields: [categoryId], references: [id])
   bookings        Booking[]
   specializations TechnicianSpecialization[]
+  activeAreas     SubServiceArea[]
 
   @@index([categoryId, isActive, sortOrder])
   @@index([deletedAt])
@@ -445,32 +457,36 @@ model SubService {
 /// bookingNumber is human-readable: FH-YYYYMMDD-NNNN
 /// Most indexed table — optimized for read-heavy customer/technician queries.
 model Booking {
-  id              String            @id @default(uuid()) @db.Uuid
-  bookingNumber   String            @unique @map("booking_number") // FH-20250713-0001
-  customerId      String            @map("customer_id") @db.Uuid
-  technicianId    String?           @map("technician_id") @db.Uuid
-  subServiceId    String            @map("sub_service_id") @db.Uuid
-  addressId       String            @map("address_id") @db.Uuid
-  status          BookingStatus     @default(DRAFT)
-  scheduledDate   DateTime          @map("scheduled_date") @db.Date
-  scheduledSlot   String            @map("scheduled_slot") // e.g., "10:00-12:00"
-  description     String?
-  totalAmount     Decimal           @map("total_amount") @db.Decimal(10, 2)
-  notes           String?           // Internal notes (admin/technician)
+  id                String             @id @default(uuid()) @db.Uuid
+  bookingNumber     String             @unique @map("booking_number") // FH-20250713-0001
+  customerId        String             @map("customer_id") @db.Uuid
+  technicianId      String?            @map("technician_id") @db.Uuid
+  subServiceId      String             @map("sub_service_id") @db.Uuid
+  addressId         String             @map("address_id") @db.Uuid
+  status            BookingStatus      @default(DRAFT)
+  scheduledDate     DateTime           @map("scheduled_date") @db.Date
+  scheduledSlot     String             @map("scheduled_slot") // e.g., "10:00-12:00"
+  description       String?
+  totalAmount       Decimal            @map("total_amount") @db.Decimal(10, 2)
+  notes             String? // Internal notes (admin/technician)
+  // Price revision — technician can propose a revised price after inspection
+  revisedAmount     Decimal?           @map("revised_amount") @db.Decimal(10, 2)
+  priceRevisionNote String?            @map("price_revision_note")
+  customerConsentAt DateTime?          @map("customer_consent_at")
   // Completion
-  completedAt     DateTime?         @map("completed_at")
+  completedAt       DateTime?          @map("completed_at")
   // Cancellation
-  cancelledAt     DateTime?         @map("cancelled_at")
-  cancelledBy     CancellationActor? @map("cancelled_by")
-  cancelReason    String?           @map("cancel_reason")
+  cancelledAt       DateTime?          @map("cancelled_at")
+  cancelledBy       CancellationActor? @map("cancelled_by")
+  cancelReason      String?            @map("cancel_reason")
   // Failure
-  failedAt        DateTime?         @map("failed_at")
-  failureReason   String?           @map("failure_reason")
+  failedAt          DateTime?          @map("failed_at")
+  failureReason     String?            @map("failure_reason")
   // Audit
-  createdAt       DateTime          @default(now()) @map("created_at")
-  updatedAt       DateTime          @updatedAt @map("updated_at")
-  createdBy       String?           @map("created_by") @db.Uuid
-  updatedBy       String?           @map("updated_by") @db.Uuid
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+  createdBy         String?            @map("created_by") @db.Uuid
+  updatedBy         String?            @map("updated_by") @db.Uuid
 
   // Relations
   customer   Customer    @relation(fields: [customerId], references: [id])
@@ -478,15 +494,16 @@ model Booking {
   subService SubService  @relation(fields: [subServiceId], references: [id])
   address    Address     @relation(fields: [addressId], references: [id])
 
-  timeline BookingTimeline[]
-  media    BookingMedia[]
-  payment  Payment?
-  review   Review?
+  timeline  BookingTimeline[]
+  media     BookingMedia[]
+  payment   Payment?
+  review    Review?
+  jobOffers JobOffer[]
 
   // Composite indexes optimized for read-heavy queries
-  @@index([customerId, status])        // "List my bookings" — Customer app
-  @@index([technicianId, status])      // "List my jobs" — Technician app
-  @@index([scheduledDate, status])     // Schedule view, admin dashboard
+  @@index([customerId, status]) // "List my bookings" — Customer app
+  @@index([technicianId, status]) // "List my jobs" — Technician app
+  @@index([scheduledDate, status]) // Schedule view, admin dashboard
   @@index([status, createdAt(sort: Desc)]) // Admin booking list
   @@map("bookings")
 }
@@ -514,14 +531,15 @@ model BookingTimeline {
 /// Photos/videos uploaded during service.
 /// Tracks uploadPhase for proof-of-work documentation.
 model BookingMedia {
-  id          String           @id @default(uuid()) @db.Uuid
-  bookingId   String           @map("booking_id") @db.Uuid
-  url         String
-  s3Key       String           @map("s3_key")
-  type        MediaType
-  uploadPhase MediaUploadPhase @map("upload_phase")
-  uploadedBy  String           @map("uploaded_by") @db.Uuid // userId
-  createdAt   DateTime         @default(now()) @map("created_at")
+  id              String           @id @default(uuid()) @db.Uuid
+  bookingId       String           @map("booking_id") @db.Uuid
+  url             String
+  s3Key           String           @map("s3_key")
+  type            MediaType
+  uploadPhase     MediaUploadPhase @map("upload_phase")
+  uploadedBy      String           @map("uploaded_by") @db.Uuid // userId
+  durationSeconds Int?             @map("duration_seconds") // videos only; max 60 enforced in DTO
+  createdAt       DateTime         @default(now()) @map("created_at")
 
   booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
@@ -537,20 +555,20 @@ model BookingMedia {
 /// Tracks high-level payment status.
 /// Unique on bookingId — one payment order per booking.
 model Payment {
-  id                String        @id @default(uuid()) @db.Uuid
-  bookingId         String        @unique @map("booking_id") @db.Uuid
-  razorpayOrderId   String?       @unique @map("razorpay_order_id")
-  razorpayPaymentId String?       @unique @map("razorpay_payment_id")
-  razorpaySignature String?       @map("razorpay_signature")
-  amount            Decimal       @db.Decimal(10, 2)
-  currency          String        @default("INR")
-  status            PaymentStatus @default(PENDING)
+  id                String         @id @default(uuid()) @db.Uuid
+  bookingId         String         @unique @map("booking_id") @db.Uuid
+  razorpayOrderId   String?        @unique @map("razorpay_order_id")
+  razorpayPaymentId String?        @unique @map("razorpay_payment_id")
+  razorpaySignature String?        @map("razorpay_signature")
+  amount            Decimal        @db.Decimal(10, 2)
+  currency          String         @default("INR")
+  status            PaymentStatus  @default(PENDING)
   method            PaymentMethod?
-  failureReason     String?       @map("failure_reason")
-  paidAt            DateTime?     @map("paid_at")
-  refundedAt        DateTime?     @map("refunded_at")
-  createdAt         DateTime      @default(now()) @map("created_at")
-  updatedAt         DateTime      @updatedAt @map("updated_at")
+  failureReason     String?        @map("failure_reason")
+  paidAt            DateTime?      @map("paid_at")
+  refundedAt        DateTime?      @map("refunded_at")
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
 
   booking      Booking              @relation(fields: [bookingId], references: [id])
   transactions PaymentTransaction[]
@@ -563,14 +581,14 @@ model Payment {
 /// One Payment can have multiple events (authorize, capture, partial refunds).
 /// Maps 1:1 with Razorpay webhook events. Append-only, never updated.
 model PaymentTransaction {
-  id                String                 @id @default(uuid()) @db.Uuid
-  paymentId         String                 @map("payment_id") @db.Uuid
-  type              PaymentTransactionType
-  razorpayEventId   String?                @unique @map("razorpay_event_id")
-  amount            Decimal                @db.Decimal(10, 2)
-  status            String                 // Raw status from gateway
-  gatewayResponse   Json?                  @map("gateway_response")
-  createdAt         DateTime               @default(now()) @map("created_at")
+  id              String                 @id @default(uuid()) @db.Uuid
+  paymentId       String                 @map("payment_id") @db.Uuid
+  type            PaymentTransactionType
+  razorpayEventId String?                @unique @map("razorpay_event_id")
+  amount          Decimal                @db.Decimal(10, 2)
+  status          String // Raw status from gateway
+  gatewayResponse Json?                  @map("gateway_response")
+  createdAt       DateTime               @default(now()) @map("created_at")
 
   payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
 
@@ -591,7 +609,7 @@ model Notification {
   title     String
   body      String
   type      NotificationType
-  data      Json?            // Deep-link payload: { bookingId, screen, etc. }
+  data      Json? // Deep-link payload: { bookingId, screen, etc. }
   isRead    Boolean          @default(false) @map("is_read")
   createdAt DateTime         @default(now()) @map("created_at")
 
@@ -613,7 +631,7 @@ model Review {
   bookingId    String   @unique @map("booking_id") @db.Uuid
   customerId   String   @map("customer_id") @db.Uuid
   technicianId String   @map("technician_id") @db.Uuid
-  rating       Int      // 1–5, enforced via application layer + CHECK constraint in migration
+  rating       Int // 1–5, enforced via application layer + CHECK constraint in migration
   comment      String?
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
@@ -628,6 +646,52 @@ model Review {
 }
 
 // ============================================================
+// JOB OFFERS (broadcast/eligibility model)
+// ============================================================
+
+/// Represents an offer sent to a technician for a CONFIRMED booking.
+/// Created when admin assigns or system broadcasts to eligible technicians.
+/// Technician has 15 minutes (expiresAt) to accept or reject.
+/// First ACCEPTED offer wins; others are EXPIRED.
+model JobOffer {
+  id           String         @id @default(uuid()) @db.Uuid
+  bookingId    String         @map("booking_id") @db.Uuid
+  technicianId String         @map("technician_id") @db.Uuid
+  status       JobOfferStatus @default(PENDING)
+  offeredAt    DateTime       @default(now()) @map("offered_at")
+  expiresAt    DateTime       @map("expires_at") // offeredAt + 15 min
+  respondedAt  DateTime?      @map("responded_at")
+
+  booking    Booking    @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  technician Technician @relation(fields: [technicianId], references: [id], onDelete: Cascade)
+
+  @@index([technicianId, status])
+  @@index([bookingId, status])
+  @@index([expiresAt])
+  @@map("job_offers")
+}
+
+// ============================================================
+// CATALOG EXTENSIONS
+// ============================================================
+
+/// Junction: SubService ↔ ServiceArea.
+/// Restricts a sub-service to specific geographic areas.
+/// If no rows exist for a sub-service, it is available in all active areas (opt-in restriction).
+model SubServiceArea {
+  id            String @id @default(uuid()) @db.Uuid
+  subServiceId  String @map("sub_service_id") @db.Uuid
+  serviceAreaId String @map("service_area_id") @db.Uuid
+
+  subService  SubService  @relation(fields: [subServiceId], references: [id], onDelete: Cascade)
+  serviceArea ServiceArea @relation(fields: [serviceAreaId], references: [id], onDelete: Cascade)
+
+  @@unique([subServiceId, serviceAreaId])
+  @@index([serviceAreaId])
+  @@map("sub_service_areas")
+}
+
+// ============================================================
 // OBSERVABILITY
 // ============================================================
 
@@ -637,8 +701,8 @@ model Review {
 model AuditLog {
   id        String   @id @default(uuid()) @db.Uuid
   userId    String?  @map("user_id") @db.Uuid
-  action    String   // CREATE, UPDATE, DELETE
-  entity    String   // Table/model name
+  action    String // CREATE, UPDATE, DELETE
+  entity    String // Table/model name
   entityId  String   @map("entity_id") @db.Uuid
   oldValue  Json?    @map("old_value")
   newValue  Json?    @map("new_value")
@@ -652,4 +716,20 @@ model AuditLog {
   @@index([userId])
   @@index([createdAt(sort: Desc)])
   @@map("audit_logs")
+}
+
+// ============================================================
+// SYSTEM
+// ============================================================
+
+/// Dynamic configuration for the platform
+/// e.g. business_hours, pricing_rules, cancellation_policy
+model PlatformSetting {
+  id        String   @id @default(uuid()) @db.Uuid
+  key       String   @unique
+  value     Json
+  updatedAt DateTime @updatedAt @map("updated_at")
+  updatedBy String?  @map("updated_by") @db.Uuid
+
+  @@map("platform_settings")
 }

@@ -6,6 +6,8 @@ import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 import { AuthenticatedUser } from '../../../common/interfaces/auth.interface';
+import { ProposeRevisionDto } from '../../booking/dto';
+import { BookingService } from '../../booking/services/booking.service';
 import {
   AddSpecializationsDto,
   CreateDocumentDto,
@@ -26,6 +28,8 @@ import { TechnicianReviewService } from '../services/technician-review.service';
 import { TechnicianServiceAreaService } from '../services/technician-service-area.service';
 import { TechnicianSpecializationService } from '../services/technician-specialization.service';
 import { TechnicianService } from '../services/technician.service';
+import { JobOfferService } from '../services/job-offer.service';
+
 
 @ApiTags('Technician')
 @ApiBearerAuth()
@@ -40,6 +44,8 @@ export class TechnicianController {
     private readonly jobService: TechnicianJobService,
     private readonly reviewService: TechnicianReviewService,
     private readonly earningsService: TechnicianEarningsService,
+    private readonly offerService: JobOfferService,
+    private readonly bookingService: BookingService,
   ) {}
 
   // ── Profile ──────────────────────────────────────────────
@@ -252,5 +258,53 @@ export class TechnicianController {
     @Query() query: EarningsQueryDto,
   ) {
     return this.earningsService.listEarnings(user.userId, query);
+  }
+
+  // ── Job Offers (Broadcast Eligibility) ─────────────────────────────
+
+  @Get('offers')
+  @ApiOperation({ summary: 'List pending job offers (non-expired, requires response within 15 min)' })
+  async listOffers(@CurrentUser() user: AuthenticatedUser) {
+    return this.offerService.listOffers(user.userId);
+  }
+
+  @Get('offers/count')
+  @ApiOperation({ summary: 'Count of pending job offers (for badge)' })
+  async countOffers(@CurrentUser() user: AuthenticatedUser) {
+    return this.offerService.countPendingOffers(user.userId);
+  }
+
+  @Patch('offers/:id/accept')
+  @ApiOperation({ summary: 'Accept a job offer (technician takes the booking)' })
+  @ApiParam({ name: 'id', description: 'JobOffer ID' })
+  async acceptOffer(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.offerService.acceptOffer(user, id);
+  }
+
+  @Patch('offers/:id/reject')
+  @ApiOperation({ summary: 'Reject a job offer' })
+  @ApiParam({ name: 'id', description: 'JobOffer ID' })
+  async rejectOffer(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: RejectJobDto,
+  ) {
+    return this.offerService.rejectOffer(user, id, dto.reason);
+  }
+
+  // ── Price Revision (Propose) ─────────────────────────────────
+
+  @Patch('jobs/:id/propose-revision')
+  @ApiOperation({ summary: 'Technician proposes a revised price after inspection (IN_PROGRESS only)' })
+  @ApiParam({ name: 'id', description: 'Booking ID' })
+  async proposeRevision(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: ProposeRevisionDto,
+  ) {
+    return this.bookingService.proposeRevision(user, id, dto);
   }
 }

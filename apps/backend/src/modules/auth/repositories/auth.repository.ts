@@ -1,4 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { ConflictException, Injectable, Logger } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
+import { ErrorCodes } from '@fixhub/shared';
 import { DevicePlatform, Role } from '@prisma/client';
 
 import { PrismaService } from '../../../common/database/prisma.service';
@@ -42,6 +44,12 @@ export class AuthRepository {
     const existingUser = await this.findUserByPhone(phone);
 
     if (existingUser) {
+      if (existingUser.role !== role) {
+        throw new ConflictException({
+          message: `User is already registered as ${existingUser.role}. Please login with correct role.`,
+          errorCode: ErrorCodes.AUTH_UNAUTHORIZED,
+        });
+      }
       return { user: existingUser, isNewUser: false };
     }
 
@@ -103,6 +111,7 @@ export class AuthRepository {
   /**
    * Cleanup expired tokens. Called by a scheduled cron job.
    */
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async deleteExpiredTokens() {
     const result = await this.prisma.refreshToken.deleteMany({
       where: {

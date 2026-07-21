@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
-import { IsEnum, IsNotEmpty, IsPhoneNumber, IsString, Length, Matches } from 'class-validator';
+import { IsIn, IsNotEmpty, IsPhoneNumber, IsString, Length, Matches } from 'class-validator';
 
 export class VerifyOtpDto {
   @ApiProperty({
@@ -27,6 +27,6 @@ export class VerifyOtpDto {
     example: Role.CUSTOMER,
     description: 'Role the user is logging in as (CUSTOMER or TECHNICIAN)',
   })
-  @IsEnum(Role, { message: 'Role must be CUSTOMER or TECHNICIAN' })
+  @IsIn([Role.CUSTOMER, Role.TECHNICIAN], { message: 'Role must be CUSTOMER or TECHNICIAN' })
   role: Role;
 }

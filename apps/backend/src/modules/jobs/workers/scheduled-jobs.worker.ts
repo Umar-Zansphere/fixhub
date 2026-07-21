@@ -25,12 +25,16 @@ export class ScheduledJobsWorker extends WorkerHost {
           return this.handleBookingExpiry();
         case 'otp-cleanup':
           return this.handleOtpCleanup();
+        case 'offer-expiry':
+          return this.handleOfferExpiry();
         case 'notification-retry':
           return this.handleNotificationRetry();
         case 'payment-retry':
           return this.handlePaymentRetry();
         case 'audit-cleanup':
           return this.handleAuditCleanup();
+        case 'refresh-token-cleanup':
+          return this.handleRefreshTokenCleanup();
         default:
           this.logger.warn(`Unknown job name encountered: ${job.name}`);
       }
@@ -68,13 +72,23 @@ export class ScheduledJobsWorker extends WorkerHost {
 
   private async handleOtpCleanup() {
     this.logger.log('Cleaning up expired OTPs...');
-    const now = new Date();
-    // Assuming an OTP model exists, adjust this to your actual schema
-    // Since we don't have an explicit OTP model in Prisma right now, 
-    // we'll log it for future implementation or dummy it out.
-    // e.g. await this.prisma.otp.deleteMany({ where: { expiresAt: { lt: now } } });
-    this.logger.log('OTP cleanup completed.');
+    // OTPs are stored in Redis with automatic TTL expiry.
+    // No database cleanup needed; this is a no-op by design.
+    this.logger.log('OTP cleanup completed (Redis TTL handles expiry).');
     return { success: true };
+  }
+
+  private async handleOfferExpiry() {
+    this.logger.log('Expiring stale job offers...');
+    const expiredCount = await this.prisma.jobOffer.updateMany({
+      where: {
+        status: 'PENDING',
+        expiresAt: { lt: new Date() },
+      },
+      data: { status: 'EXPIRED' },
+    });
+    this.logger.log(`Expired ${expiredCount.count} stale job offers.`);
+    return { success: true, count: expiredCount.count };
   }
 
   private async handleNotificationRetry() {
@@ -90,11 +104,22 @@ export class ScheduledJobsWorker extends WorkerHost {
   }
 
   private async handleAuditCleanup() {
-    this.logger.log('Cleaning up old audit logs...');
-    // Example: Delete audit logs older than 90 days
+    this.logger.log('Cleaning up old audit logs (retention: 90 days)...');
     const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
-    // await this.prisma.auditLog.deleteMany({ where: { createdAt: { lt: ninetyDaysAgo } } });
-    this.logger.log('Audit logs cleaned up.');
-    return { success: true };
+    const deleted = await this.prisma.auditLog.deleteMany({
+      where: { createdAt: { lt: ninetyDaysAgo } },
+    });
+    this.logger.log(`Audit cleanup: deleted ${deleted.count} records older than 90 days.`);
+    return { success: true, count: deleted.count };
+  }
+
+  private async handleRefreshTokenCleanup() {
+    this.logger.log('Cleaning up expired refresh tokens...');
+    const now = new Date();
+    const deleted = await this.prisma.refreshToken.deleteMany({
+      where: { expiresAt: { lt: now } },
+    });
+    this.logger.log(`Refresh token cleanup: deleted ${deleted.count} expired tokens.`);
+    return { success: true, count: deleted.count };
   }
 }

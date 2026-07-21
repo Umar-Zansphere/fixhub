@@ -24,9 +24,24 @@ export class TokenService {
     private readonly authRepository: AuthRepository,
   ) {
     this.accessExpiration = this.configService.get<string>('jwt.accessExpiration', '15m');
-    // Parse "7d" → 7
+    // Parse "7d", "1w", "15d" into days
     const refreshExp = this.configService.get<string>('jwt.refreshExpiration', '7d');
-    this.refreshExpirationDays = parseInt(refreshExp.replace(/\D/g, ''), 10) || 7;
+    const match = refreshExp.match(/^(\d+)([dwhm]?)$/i);
+    if (match) {
+      const val = parseInt(match[1], 10);
+      const unit = match[2]?.toLowerCase() || 'd';
+      switch (unit) {
+        case 'w': this.refreshExpirationDays = val * 7; break;
+        case 'm': this.refreshExpirationDays = Math.ceil(val / (24 * 60)); break;
+        case 'h': this.refreshExpirationDays = Math.ceil(val / 24); break;
+        case 'd':
+        default: this.refreshExpirationDays = val; break;
+      }
+    } else {
+      this.refreshExpirationDays = 7;
+    }
+    // ensure at least 1 day
+    this.refreshExpirationDays = Math.max(1, this.refreshExpirationDays);
   }
 
   // ── Token Generation ──────────────────────────────────────

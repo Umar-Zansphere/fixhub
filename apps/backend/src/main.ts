@@ -12,6 +12,9 @@ const compression = require('compression') as typeof import('compression');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const helmet = require('helmet') as typeof import('helmet').default;
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const cookieParser = require('cookie-parser') as typeof import('cookie-parser');
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     bufferLogs: true,
@@ -29,6 +32,7 @@ async function bootstrap() {
   // Security
   app.use(helmet());
   app.use(compression());
+  app.use(cookieParser());
 
   // CORS
   const corsOrigins = configService.get<string[]>('cors.origins', ['http://localhost:3001']);

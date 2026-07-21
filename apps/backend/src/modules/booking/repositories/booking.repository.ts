@@ -182,6 +182,52 @@ export class BookingRepository {
     });
   }
 
+  async countServiceCapacity(serviceAreaId: string, subServiceId: string) {
+    return this.prisma.technician.count({
+      where: {
+        verificationStatus: 'VERIFIED',
+        deletedAt: null,
+        user: { isActive: true, deletedAt: null },
+        serviceAreas: {
+          some: { serviceAreaId },
+        },
+        specializations: {
+          some: { subServiceId },
+        },
+      },
+    });
+  }
+
+  async countSlotBookings(
+    serviceAreaId: string,
+    subServiceId: string,
+    scheduledDate: Date,
+    scheduledSlot: string,
+    draftCreatedAfter: Date,
+  ) {
+    return this.prisma.booking.count({
+      where: {
+        address: {
+          pincode: {
+            in: await this.prisma.serviceArea
+              .findUnique({ where: { id: serviceAreaId } })
+              .then((area) => (area ? [area.pincode] : [])),
+          },
+        },
+        subServiceId,
+        scheduledDate,
+        scheduledSlot,
+        OR: [
+          { status: { in: BLOCKING_BOOKING_STATUSES.filter((status) => status !== BookingStatus.DRAFT) } },
+          {
+            status: BookingStatus.DRAFT,
+            createdAt: { gte: draftCreatedAfter },
+          },
+        ],
+      },
+    });
+  }
+
   async countSlotConflicts(params: {
     addressId: string;
     scheduledDate: Date;
@@ -411,6 +457,82 @@ export class BookingRepository {
 
   transaction<T>(fn: (tx: PrismaTx) => Promise<T>) {
     return this.prisma.$transaction(fn);
+  }
+
+  async createReview(
+    bookingId: string,
+    customerId: string,
+    technicianId: string,
+    rating: number,
+    comment?: string,
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const review = await tx.review.create({
+        data: { bookingId, customerId, technicianId, rating, comment },
+      });
+
+      // Recompute technician aggregate rating from all reviews
+      const { _avg, _count } = await tx.review.aggregate({
+        where: { technicianId },
+        _avg: { rating: true },
+        _count: { rating: true },
+      });
+
+      await tx.technician.update({
+        where: { id: technicianId },
+        data: {
+          rating: _avg.rating ? Math.round(_avg.rating * 100) / 100 : 0,
+          totalJobs: _count.rating,
+        },
+      });
+
+      return review;
+    });
+  }
+
+  setPriceRevision(
+    tx: PrismaTx,
+    bookingId: string,
+    revisedAmount: number,
+    note: string | undefined,
+    actorUserId: string,
+  ) {
+    return tx.booking.update({
+      where: { id: bookingId },
+      data: {
+        revisedAmount,
+        priceRevisionNote: note,
+        status: 'PRICE_REVISION_PENDING',
+        updatedBy: actorUserId,
+      },
+      include: this.bookingInclude(),
+    });
+  }
+
+  async approveRevision(tx: PrismaTx, bookingId: string, actorUserId: string) {
+    // First fetch the proposed revisedAmount, then promote it to totalAmount
+    const { revisedAmount } = await tx.booking.findUniqueOrThrow({
+      where: { id: bookingId },
+      select: { revisedAmount: true },
+    });
+
+    return tx.booking.update({
+      where: { id: bookingId },
+      data: {
+        totalAmount: revisedAmount!,
+        status: 'IN_PROGRESS',
+        customerConsentAt: new Date(),
+        updatedBy: actorUserId,
+      },
+      include: this.bookingInclude(),
+    });
+  }
+
+  findTechnicianProfileByUserId(userId: string) {
+    return this.prisma.technician.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
   }
 
   private bookingInclude() {

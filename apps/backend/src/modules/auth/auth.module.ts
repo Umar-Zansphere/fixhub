@@ -10,7 +10,6 @@ import { AuthService } from './services/auth.service';
 import { OtpService } from './services/otp.service';
 import { TokenService } from './services/token.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
-import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
 
 @Module({
   imports: [
@@ -39,7 +38,6 @@ import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
     AuthRepository,
     // Strategies
     JwtStrategy,
-    JwtRefreshStrategy,
   ],
   exports: [AuthService, TokenService, OtpService],
 })

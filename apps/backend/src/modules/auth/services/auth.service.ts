@@ -9,10 +9,11 @@ import {
 import { Role } from '@prisma/client';
 
 import { AuthenticatedUser } from '../../../common/interfaces/auth.interface';
-import { SendOtpDto, VerifyOtpDto } from '../dto';
+import { AdminLoginDto, SendOtpDto, VerifyOtpDto } from '../dto';
 import { AuthRepository } from '../repositories/auth.repository';
 import { OtpService } from './otp.service';
 import { TokenService } from './token.service';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class AuthService {
@@ -109,6 +110,47 @@ export class AuthService {
         phone: user.phone,
         name: user.name,
         email: user.email,
+        role: user.role,
+      },
+    };
+  }
+
+  // ── Admin Login ───────────────────────────────────────────
+
+  async adminLogin(dto: AdminLoginDto) {
+    const user = await this.authRepository.findUserByEmail(dto.email);
+
+    if (!user || user.role !== Role.ADMIN) {
+      throw new UnauthorizedException({
+        message: 'Invalid credentials',
+        errorCode: ErrorCodes.AUTH_UNAUTHORIZED,
+      });
+    }
+
+    if (!user.password || !(await bcrypt.compare(dto.password, user.password))) {
+      throw new UnauthorizedException({
+        message: 'Invalid credentials',
+        errorCode: ErrorCodes.AUTH_UNAUTHORIZED,
+      });
+    }
+
+    if (!user.isActive) {
+      throw new ForbiddenException({
+        message: 'Admin account has been deactivated.',
+        errorCode: ErrorCodes.AUTH_ACCOUNT_DEACTIVATED,
+      });
+    }
+
+    const tokens = await this.tokenService.generateTokenPair(user);
+
+    this.logger.log(`Admin ${user.id} logged in successfully`);
+
+    return {
+      ...tokens,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
         role: user.role,
       },
     };

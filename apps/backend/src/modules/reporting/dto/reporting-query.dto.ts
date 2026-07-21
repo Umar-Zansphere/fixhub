@@ -24,4 +24,8 @@ export class ReportingQueryDto {
   @IsOptional()
   @IsEnum(ExportFormat)
   export?: ExportFormat;
+
+  @ApiPropertyOptional({ description: 'Group by period (day, week, month)' })
+  @IsOptional()
+  groupBy?: string;
 }

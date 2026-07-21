@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 import { RedisService } from '../../../common/redis/redis.service';
@@ -13,6 +13,7 @@ import { generateOtp, hashString } from '../../../common/utils/helpers.util';
 const OTP_PREFIX = 'otp:';
 const OTP_ATTEMPTS_PREFIX = 'otp_attempts:';
 const OTP_COOLDOWN_PREFIX = 'otp_cooldown:';
+const OTP_LOCKOUT_PREFIX = 'otp_lockout:';
 
 @Injectable()
 export class OtpService {
@@ -48,6 +49,13 @@ export class OtpService {
     expiresInSeconds: number;
     isResend: boolean;
   }> {
+    // Check lockout
+    const lockoutKey = `${OTP_LOCKOUT_PREFIX}${phone}`;
+    const lockoutTtl = await this.redisService.getClient().ttl(lockoutKey);
+    if (lockoutTtl > 0) {
+      throw new ForbiddenException(`Too many attempts. Please try again after ${Math.ceil(lockoutTtl / 60)} minutes.`);
+    }
+
     // Check resend cooldown
     const cooldownKey = `${OTP_COOLDOWN_PREFIX}${phone}`;
     const isOnCooldown = await this.redisService.exists(cooldownKey);
@@ -114,6 +122,10 @@ export class OtpService {
     await this.redisService.expire(attemptsKey, this.otpExpiration);
 
     if (attempts > this.maxAttempts) {
+      // Set lockout (e.g. 30 minutes)
+      const lockoutKey = `${OTP_LOCKOUT_PREFIX}${phone}`;
+      await this.redisService.set(lockoutKey, '1', 30 * 60);
+
       // Wipe the OTP to force re-request
       await this.cleanup(phone);
       return { valid: false, reason: 'MAX_ATTEMPTS', remainingAttempts: 0 };

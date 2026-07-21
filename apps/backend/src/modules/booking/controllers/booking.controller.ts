@@ -10,6 +10,7 @@ import {
   ConfirmBookingDto,
   CreateBookingDto,
   CreateBookingMediaDto,
+  CreateReviewDto,
   UpdateBookingStatusDto,
 } from '../dto';
 import { BookingLifecycleService } from '../services/booking-lifecycle.service';
@@ -41,6 +42,12 @@ export class BookingController {
     @Query() query: BookingQueryDto,
   ) {
     return this.bookingQueryService.listHistoryForActor(user, query);
+  }
+
+  @Get('available-slots')
+  @ApiOperation({ summary: 'Get available time slots for a service in a given area on a specific date' })
+  async getAvailableSlots(@Query() query: import('../dto/create-booking.dto').AvailableSlotsQueryDto) {
+    return this.bookingService.getAvailableSlots(query);
   }
 
   @Get(':id')
@@ -128,5 +135,43 @@ export class BookingController {
     @Body() dto: UpdateBookingStatusDto,
   ) {
     return this.bookingLifecycleService.transition(id, user, dto);
+  }
+
+  // ── Reviews ──────────────────────────────────────────────────────
+
+  @Post(':id/review')
+  @ApiOperation({ summary: 'Submit a rating and review for a completed booking (CUSTOMER only)' })
+  @ApiParam({ name: 'id', description: 'Booking id' })
+  @ApiResponse({ status: 201, description: 'Review created' })
+  async submitReview(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: CreateReviewDto,
+  ) {
+    return this.bookingService.submitReview(user, id, dto);
+  }
+
+  // ── Price Revision ───────────────────────────────────────────────
+
+  @Patch(':id/approve-revision')
+  @ApiOperation({ summary: 'Customer approves technician price revision' })
+  @ApiParam({ name: 'id', description: 'Booking id' })
+  @ApiResponse({ status: 200, description: 'Revised amount accepted, job continues' })
+  async approveRevision(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.bookingService.approveRevision(user, id);
+  }
+
+  @Patch(':id/reject-revision')
+  @ApiOperation({ summary: 'Customer rejects technician price revision — booking is cancelled' })
+  @ApiParam({ name: 'id', description: 'Booking id' })
+  @ApiResponse({ status: 200, description: 'Revision rejected, booking cancelled' })
+  async rejectRevision(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.bookingService.rejectRevision(user, id);
   }
 }

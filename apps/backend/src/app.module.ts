@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 
 // Common modules
@@ -37,6 +38,7 @@ import { UsersModule } from './modules/users/users.module';
     RedisModule,
     QueueModule,
     StorageModule,
+    ScheduleModule.forRoot(),
 
     // Rate limiting
     ThrottlerModule.forRootAsync({

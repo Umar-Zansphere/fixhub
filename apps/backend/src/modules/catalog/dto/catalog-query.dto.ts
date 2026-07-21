@@ -29,4 +29,10 @@ export class ServiceQueryDto extends PaginationDto {
   @Type(() => Boolean)
   @IsBoolean()
   isActive?: boolean;
+
+  @ApiPropertyOptional({ example: '600099' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(10)
+  pincode?: string;
 }

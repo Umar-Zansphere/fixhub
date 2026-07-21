@@ -24,28 +24,28 @@ export class CatalogService {
     private readonly cacheService: CatalogCacheService,
   ) {}
 
-  async listCategories(query: CategoryQueryDto) {
-    const cacheKey = this.cacheKey('categories', query);
+  async listCategories(query: CategoryQueryDto, isAdmin = false) {
+    const cacheKey = this.cacheKey(isAdmin ? 'admin:categories' : 'categories', query);
     const cached = await this.cacheService.get(cacheKey);
 
     if (cached) {
       return cached;
     }
 
-    const result = await this.catalogRepository.listCategories(query, true);
+    const result = await this.catalogRepository.listCategories(query, !isAdmin);
     await this.cacheService.set(cacheKey, result);
     return result;
   }
 
-  async getCategory(id: string) {
-    const cacheKey = `categories:${id}`;
+  async getCategory(id: string, isAdmin = false) {
+    const cacheKey = isAdmin ? `admin:categories:${id}` : `categories:${id}`;
     const cached = await this.cacheService.get(cacheKey);
 
     if (cached) {
       return cached;
     }
 
-    const category = await this.catalogRepository.findCategoryById(id, true);
+    const category = await this.catalogRepository.findCategoryById(id, !isAdmin);
 
     if (!category) {
       throw new NotFoundException({
@@ -58,28 +58,28 @@ export class CatalogService {
     return category;
   }
 
-  async listServices(query: ServiceQueryDto) {
-    const cacheKey = this.cacheKey('services', query);
+  async listServices(query: ServiceQueryDto, isAdmin = false) {
+    const cacheKey = this.cacheKey(isAdmin ? 'admin:services' : 'services', query);
     const cached = await this.cacheService.get(cacheKey);
 
     if (cached) {
       return cached;
     }
 
-    const result = await this.catalogRepository.listServices(query, true);
+    const result = await this.catalogRepository.listServices(query, !isAdmin);
     await this.cacheService.set(cacheKey, result);
     return result;
   }
 
-  async getService(id: string) {
-    const cacheKey = `services:${id}`;
+  async getService(id: string, isAdmin = false) {
+    const cacheKey = isAdmin ? `admin:services:${id}` : `services:${id}`;
     const cached = await this.cacheService.get(cacheKey);
 
     if (cached) {
       return cached;
     }
 
-    const service = await this.catalogRepository.findServiceById(id, true);
+    const service = await this.catalogRepository.findServiceById(id, !isAdmin);
 
     if (!service) {
       throw new NotFoundException({
@@ -276,6 +276,7 @@ export class CatalogService {
       ...('categoryId' in query && {
         categoryId: query.categoryId,
         categorySlug: query.categorySlug,
+        pincode: (query as ServiceQueryDto).pincode,
       }),
     })}`;
   }

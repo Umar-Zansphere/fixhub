@@ -7,7 +7,7 @@ import { CatalogService } from '../services/catalog.service';
 
 @Public()
 @ApiTags('Catalog')
-@Controller()
+@Controller('catalog')
 export class CatalogController {
   constructor(private readonly catalogService: CatalogService) {}
 

@@ -37,6 +37,17 @@ export class CreateBookingMediaDto {
   @Max(104_857_600)
   sizeBytes?: number;
 
+  @ApiPropertyOptional({
+    example: 45,
+    description: 'Duration of the video in seconds. Required for VIDEO type. Max 60 seconds (SRS §2.4).',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(60)
+  durationSeconds?: number;
+
   @ApiPropertyOptional({ enum: MediaType, default: MediaType.IMAGE })
   @IsOptional()
   @IsEnum(MediaType)

@@ -137,15 +137,28 @@ export class CatalogRepository {
       ...(Object.keys(categoryWhere).length ? { category: categoryWhere } : {}),
       ...(!publicOnly && query.isActive !== undefined ? { isActive: query.isActive } : {}),
       ...(query.categoryId && { categoryId: query.categoryId }),
-      ...(query.search && {
-        OR: [
-          { name: { contains: query.search, mode: 'insensitive' } },
-          { slug: { contains: query.search, mode: 'insensitive' } },
-          { description: { contains: query.search, mode: 'insensitive' } },
-          { category: { name: { contains: query.search, mode: 'insensitive' } } },
-        ],
-      }),
     };
+
+    if (query.search) {
+      where.OR = [
+        { name: { contains: query.search, mode: 'insensitive' } },
+        { slug: { contains: query.search, mode: 'insensitive' } },
+        { description: { contains: query.search, mode: 'insensitive' } },
+        { category: { name: { contains: query.search, mode: 'insensitive' } } },
+      ];
+    }
+
+    if (query.pincode) {
+      where.AND = [
+        ...(Array.isArray(where.AND) ? where.AND : (where.AND ? [where.AND as Prisma.SubServiceWhereInput] : [])),
+        {
+          OR: [
+            { activeAreas: { none: {} } },
+            { activeAreas: { some: { serviceArea: { pincode: query.pincode, isActive: true } } } },
+          ],
+        },
+      ];
+    }
 
     const sortBy = this.serviceSortField(query.sortBy);
     const [items, total] = await this.prisma.$transaction([

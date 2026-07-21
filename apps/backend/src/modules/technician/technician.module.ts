@@ -10,6 +10,7 @@ import { TechnicianReviewRepository } from './repositories/technician-review.rep
 import { TechnicianServiceAreaRepository } from './repositories/technician-service-area.repository';
 import { TechnicianSpecializationRepository } from './repositories/technician-specialization.repository';
 import { TechnicianRepository } from './repositories/technician.repository';
+import { JobOfferRepository } from './repositories/job-offer.repository';
 import { TechnicianDocumentService } from './services/technician-document.service';
 import { TechnicianEarningsService } from './services/technician-earnings.service';
 import { TechnicianJobService } from './services/technician-job.service';
@@ -17,6 +18,7 @@ import { TechnicianReviewService } from './services/technician-review.service';
 import { TechnicianServiceAreaService } from './services/technician-service-area.service';
 import { TechnicianSpecializationService } from './services/technician-specialization.service';
 import { TechnicianService } from './services/technician.service';
+import { JobOfferService } from './services/job-offer.service';
 
 @Module({
   imports: [StorageModule, BookingModule],
@@ -30,6 +32,7 @@ import { TechnicianService } from './services/technician.service';
     TechnicianJobService,
     TechnicianReviewService,
     TechnicianEarningsService,
+    JobOfferService,
     // Repositories
     TechnicianRepository,
     TechnicianDocumentRepository,
@@ -38,6 +41,7 @@ import { TechnicianService } from './services/technician.service';
     TechnicianJobRepository,
     TechnicianReviewRepository,
     TechnicianEarningsRepository,
+    JobOfferRepository,
   ],
   exports: [TechnicianService],
 })

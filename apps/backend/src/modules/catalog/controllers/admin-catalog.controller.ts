@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -17,6 +17,8 @@ import {
   UpdateCategoryDto,
   UpdatePricingDto,
   UpdateServiceDto,
+  CategoryQueryDto,
+  ServiceQueryDto,
 } from '../dto';
 import { CatalogService } from '../services/catalog.service';
 
@@ -26,6 +28,21 @@ import { CatalogService } from '../services/catalog.service';
 @Controller('admin')
 export class AdminCatalogController {
   constructor(private readonly catalogService: CatalogService) {}
+
+  @Get('categories')
+  @ApiOperation({ summary: 'List all service categories (Admin)' })
+  @ApiResponse({ status: 200, description: 'Categories returned' })
+  listCategories(@Query() query: CategoryQueryDto) {
+    return this.catalogService.listCategories(query, true);
+  }
+
+  @Get('categories/:id')
+  @ApiOperation({ summary: 'Get category details (Admin)' })
+  @ApiParam({ name: 'id', description: 'Category id' })
+  @ApiResponse({ status: 200, description: 'Category returned' })
+  getCategory(@Param('id') id: string) {
+    return this.catalogService.getCategory(id, true);
+  }
 
   @Post('categories')
   @ApiOperation({ summary: 'Create service category' })
@@ -55,6 +72,21 @@ export class AdminCatalogController {
   @ApiResponse({ status: 200, description: 'Category deleted' })
   deleteCategory(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
     return this.catalogService.deleteCategory(id, user.userId);
+  }
+
+  @Get('services')
+  @ApiOperation({ summary: 'List all sub services (Admin)' })
+  @ApiResponse({ status: 200, description: 'Services returned' })
+  listServices(@Query() query: ServiceQueryDto) {
+    return this.catalogService.listServices(query, true);
+  }
+
+  @Get('services/:id')
+  @ApiOperation({ summary: 'Get sub service details (Admin)' })
+  @ApiParam({ name: 'id', description: 'Service id' })
+  @ApiResponse({ status: 200, description: 'Service returned' })
+  getService(@Param('id') id: string) {
+    return this.catalogService.getService(id, true);
   }
 
   @Post('services')
