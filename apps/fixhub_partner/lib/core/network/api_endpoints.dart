@@ -39,6 +39,16 @@ class ApiEndpoints {
       '/technicians/jobs/$id/reject';
   static String technicianJobStatus(String id) =>
       '/technicians/jobs/$id/status';
+  static String technicianJobProposeRevision(String id) =>
+      '/technicians/jobs/$id/propose-revision';
+
+  // ── Technician Job Offers (broadcast eligibility) ───────────────
+  static const String technicianOffers = '/technicians/offers';
+  static const String technicianOffersCount = '/technicians/offers/count';
+  static String technicianOfferAccept(String id) =>
+      '/technicians/offers/$id/accept';
+  static String technicianOfferReject(String id) =>
+      '/technicians/offers/$id/reject';
 
   // ── Technician Earnings ─────────────────────────────────────────
   static const String technicianEarnings = '/technicians/earnings';

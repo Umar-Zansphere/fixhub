@@ -12,10 +12,14 @@ class HomeRemoteDataSource {
     return _extractList(response.data);
   }
 
-  /// GET /services?categoryId=X
-  Future<List<dynamic>> getSubServices(String categoryId) async {
+  /// GET /services
+  Future<List<dynamic>> getSubServices(String categoryId, {String? pincode}) async {
     final response = await _dio.get(
-      ApiEndpoints.categoryServices(categoryId),
+      ApiEndpoints.services,
+      queryParameters: {
+        'categoryId': categoryId,
+        if (pincode != null) 'pincode': pincode,
+      },
     );
     return _extractList(response.data);
   }

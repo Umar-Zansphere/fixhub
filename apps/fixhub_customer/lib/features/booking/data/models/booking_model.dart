@@ -21,6 +21,9 @@ class BookingModel {
     @JsonKey(fromJson: _parseDouble)
     required this.totalAmount,
     this.notes,
+    @JsonKey(fromJson: _parseNullableDouble)
+    this.revisedAmount,
+    this.priceRevisionNote,
     this.completedAt,
     this.cancelledAt,
     this.cancelledBy,
@@ -30,6 +33,7 @@ class BookingModel {
     this.address,
     this.subService,
     this.technician,
+    this.review,
     this.timeline = const [],
   });
 
@@ -45,17 +49,20 @@ class BookingModel {
   final String? description;
   final double totalAmount;
   final String? notes;
+  final double? revisedAmount;
+  final String? priceRevisionNote;
   final DateTime? completedAt;
   final DateTime? cancelledAt;
   final String? cancelledBy;
   final String? cancelReason;
   final DateTime? failedAt;
   final String? failureReason;
-  
+
   // Relations
   final AddressModel? address;
   final Map<String, dynamic>? subService;
   final Map<String, dynamic>? technician;
+  final Map<String, dynamic>? review;
   final List<BookingTimelineModel> timeline;
 
   factory BookingModel.fromJson(Map<String, dynamic> json) =>
@@ -87,6 +94,8 @@ class BookingModel {
         return BookingStatusType.arrived;
       case 'IN_PROGRESS':
         return BookingStatusType.inProgress;
+      case 'PRICE_REVISION_PENDING':
+        return BookingStatusType.inProgress; // Show as in-progress visually
       case 'COMPLETED':
         return BookingStatusType.completed;
       case 'CANCELLED':
@@ -117,4 +126,11 @@ double _parseDouble(dynamic value) {
   if (value is num) return value.toDouble();
   if (value is String) return double.tryParse(value) ?? 0.0;
   return 0.0;
+}
+
+double? _parseNullableDouble(dynamic value) {
+  if (value == null) return null;
+  if (value is num) return value.toDouble();
+  if (value is String) return double.tryParse(value);
+  return null;
 }

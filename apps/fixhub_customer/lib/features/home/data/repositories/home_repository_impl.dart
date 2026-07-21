@@ -17,8 +17,8 @@ class HomeRepositoryImpl implements HomeRepository {
   }
 
   @override
-  Future<List<SubServiceModel>> getSubServices(String categoryId) async {
-    final data = await _remoteDataSource.getSubServices(categoryId);
+  Future<List<SubServiceModel>> getSubServices(String categoryId, {String? pincode}) async {
+    final data = await _remoteDataSource.getSubServices(categoryId, pincode: pincode);
     return data
         .map((e) => SubServiceModel.fromJson(Map<String, dynamic>.from(e)))
         .toList();

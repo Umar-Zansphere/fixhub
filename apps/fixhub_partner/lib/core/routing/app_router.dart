@@ -6,6 +6,7 @@ import '../../features/auth/presentation/otp_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/jobs/presentation/my_jobs_screen.dart';
 import '../../features/jobs/presentation/job_details_screen.dart';
+import '../../features/jobs/presentation/job_offers_screen.dart';
 import '../../features/earnings/presentation/earnings_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/notifications/presentation/notifications_screen.dart';
@@ -31,8 +32,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/otp',
       builder: (context, state) {
-        final phone = state.extra as String? ?? '';
-        return OtpScreen(phone: phone);
+        final extra = state.extra as Map<String, dynamic>? ?? {};
+        final phone = extra['phone'] as String? ?? '';
+        final devOtp = extra['devOtp'] as String?;
+        return OtpScreen(phone: phone, devOtp: devOtp);
       },
     ),
 
@@ -89,6 +92,11 @@ final GoRouter appRouter = GoRouter(
         final id = state.pathParameters['id']!;
         return JobDetailsScreen(jobId: id);
       },
+    ),
+    GoRoute(
+      path: '/offers',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const JobOffersScreen(),
     ),
     GoRoute(
       path: '/notifications',

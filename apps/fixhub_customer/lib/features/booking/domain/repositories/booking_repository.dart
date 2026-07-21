@@ -9,4 +9,5 @@ abstract class BookingRepository {
   Future<BookingModel> cancelBooking(String id, String reason);
   Future<Map<String, dynamic>> createPaymentOrder(String bookingId);
   Future<Map<String, dynamic>> verifyPayment(Map<String, dynamic> payload);
+  Future<List<String>> getAvailableSlots(String subServiceId, String pincode, String date);
 }

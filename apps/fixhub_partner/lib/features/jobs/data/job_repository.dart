@@ -89,6 +89,18 @@ class JobRepository {
     return Job.fromJson(_unwrapMap(response.data));
   }
 
+  /// PATCH /technicians/jobs/:id/propose-revision
+  Future<Job> proposeRevision(String id, double revisedAmount, {String? note}) async {
+    final response = await _dio.patch(
+      ApiEndpoints.technicianJobProposeRevision(id),
+      data: {
+        'revisedAmount': revisedAmount.toStringAsFixed(2),
+        if (note != null) 'note': note,
+      },
+    );
+    return Job.fromJson(_unwrapMap(response.data));
+  }
+
   dynamic _unwrap(dynamic data) {
     if (data is Map<String, dynamic> && data.containsKey('data')) {
       return data['data'];

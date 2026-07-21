@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/profile_repository.dart';
+import '../../../core/services/location_service.dart';
+import '../../../core/services/location_tracker.dart';
 
 final profileProvider = AsyncNotifierProvider<ProfileNotifier, TechnicianProfile?>(ProfileNotifier.new);
 
@@ -20,6 +22,16 @@ class ProfileNotifier extends AsyncNotifier<TechnicianProfile?> {
 
   Future<void> toggleAvailability(bool isAvailable) async {
     final current = state.value;
+
+    // Grab GPS position before toggling (best-effort; null is OK — backend accepts without it)
+    double? lat, lng;
+    final locService = ref.read(locationServiceProvider);
+    final position = await locService.getCurrentPosition();
+    if (position != null) {
+      lat = position.latitude;
+      lng = position.longitude;
+    }
+
     // Optimistic update
     if (current != null) {
       state = AsyncValue.data(TechnicianProfile(
@@ -37,11 +49,19 @@ class ProfileNotifier extends AsyncNotifier<TechnicianProfile?> {
         documents: current.documents,
       ));
     }
+
     try {
-      final updated = await _repository.updateAvailability(isAvailable);
+      final updated = await _repository.updateAvailability(isAvailable, lat: lat, lng: lng);
       state = AsyncValue.data(updated);
+
+      // Start / stop background location tracking
+      final tracker = ref.read(locationTrackerProvider);
+      if (isAvailable) {
+        tracker.start();
+      } else {
+        tracker.stop();
+      }
     } catch (e, st) {
-      // Revert on error
       if (current != null) state = AsyncValue.data(current);
       state = AsyncValue.error(e, st);
       rethrow;

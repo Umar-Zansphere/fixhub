@@ -54,4 +54,9 @@ class BookingRepositoryImpl implements BookingRepository {
   Future<Map<String, dynamic>> verifyPayment(Map<String, dynamic> payload) async {
     return _remoteDataSource.verifyPayment(payload);
   }
+
+  @override
+  Future<List<String>> getAvailableSlots(String subServiceId, String pincode, String date) async {
+    return _remoteDataSource.getAvailableSlots(subServiceId, pincode, date);
+  }
 }

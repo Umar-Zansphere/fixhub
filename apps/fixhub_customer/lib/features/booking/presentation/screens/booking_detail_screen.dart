@@ -9,6 +9,7 @@ import '../../../../core/widgets/fixhub_shimmer.dart';
 import '../../../../core/widgets/fixhub_error_state.dart';
 import '../../../../core/widgets/fixhub_status_chip.dart';
 import '../providers/booking_provider.dart';
+import 'rate_service_screen.dart';
 
 class BookingDetailScreen extends ConsumerWidget {
   const BookingDetailScreen({super.key, required this.bookingId});
@@ -290,25 +291,174 @@ class BookingDetailScreen extends ConsumerWidget {
                   ),
                 ),
               ],
-              if (booking.statusType == BookingStatusType.completed) ...[
+              // Price revision consent banner
+              if (booking.status == 'PRICE_REVISION_PENDING') ...[ 
                 const SizedBox(height: AppSpacing.lg),
-                SizedBox(
+                Container(
                   width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.buttonPrimary,
-                      foregroundColor: AppColors.surface,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                  padding: const EdgeInsets.all(AppSpacing.cardPadding),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFFBEB), // Amber tint
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppColors.warning.withOpacity(0.5)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.info_rounded, color: AppColors.warning, size: 20),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Price Revision Required',
+                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.warning,
+                                ),
+                          ),
+                        ],
                       ),
-                    ),
-                    onPressed: () {
-                      // TODO: Navigate to rating screen
-                    },
-                    child: const Text('Rate Service'),
+                      const SizedBox(height: AppSpacing.sm),
+                      if (booking.revisedAmount != null) ...[
+                        Row(
+                          children: [
+                            Text(
+                              'Original: ',
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
+                            ),
+                            Text(
+                              '₹${booking.totalAmount.toStringAsFixed(0)}',
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    decoration: TextDecoration.lineThrough,
+                                    color: AppColors.textSecondary,
+                                  ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Text(
+                              'Revised: ',
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textPrimary),
+                            ),
+                            Text(
+                              '₹${booking.revisedAmount!.toStringAsFixed(0)}',
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textPrimary,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ],
+                      if (booking.priceRevisionNote?.isNotEmpty == true) ...[
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(
+                          '"${booking.priceRevisionNote}"',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
+                        ),
+                      ],
+                      const SizedBox(height: AppSpacing.md),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () async {
+                                await ref.read(bookingActionProvider.notifier).rejectRevision(booking.id);
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Booking cancelled'), backgroundColor: AppColors.error),
+                                  );
+                                }
+                              },
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppColors.error,
+                                side: const BorderSide(color: AppColors.error),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              child: const Text('Decline'),
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            flex: 2,
+                            child: ElevatedButton(
+                              onPressed: () async {
+                                await ref.read(bookingActionProvider.notifier).approveRevision(booking.id);
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Price approved. Job continuing!'), backgroundColor: AppColors.success),
+                                  );
+                                }
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.buttonPrimary,
+                                foregroundColor: AppColors.buttonPrimaryText,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              child: const Text('Approve Price', style: TextStyle(fontWeight: FontWeight.w600)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
+              ],
+              if (booking.statusType == BookingStatusType.completed) ...[
+                const SizedBox(height: AppSpacing.lg),
+                if (booking.review != null)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(AppSpacing.cardPadding),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 20),
+                        const SizedBox(width: AppSpacing.xs),
+                        Text(
+                          'You rated this service ${booking.review!['rating'] ?? ''}/5',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: AppColors.textSecondary,
+                              ),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.buttonPrimary,
+                        foregroundColor: AppColors.surface,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => RateServiceScreen(
+                              bookingId: booking.id,
+                              serviceName: booking.subService?['name'] ?? 'Service',
+                            ),
+                          ),
+                        ).then((submitted) {
+                          if (submitted == true) {
+                            ref.invalidate(bookingDetailProvider(bookingId));
+                          }
+                        });
+                      },
+                      child: const Text('Rate Service'),
+                    ),
+                  ),
               ],
               const SizedBox(height: AppSpacing.xxl),
             ],

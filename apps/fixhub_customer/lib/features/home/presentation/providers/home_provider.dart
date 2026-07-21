@@ -5,6 +5,7 @@ import '../../data/models/sub_service_model.dart';
 import '../../data/repositories/home_repository_impl.dart';
 import '../../domain/repositories/home_repository.dart';
 import '../../../../core/network/dio_client.dart';
+import '../../location/presentation/providers/location_provider.dart';
 
 // ── Repository Provider ───────────────────────────────────────
 
@@ -27,7 +28,8 @@ final subServicesProvider =
     FutureProvider.family<List<SubServiceModel>, String>(
         (ref, categoryId) async {
   final repo = ref.watch(homeRepositoryProvider);
-  return repo.getSubServices(categoryId);
+  final locationState = ref.watch(locationProvider);
+  return repo.getSubServices(categoryId, pincode: locationState.currentPincode);
 });
 
 // ── Popular Services (all active services for the home screen) ─
@@ -40,11 +42,15 @@ final popularServicesProvider =
   if (activeCategories.isEmpty) return [];
 
   final repo = ref.read(homeRepositoryProvider);
+  final locationState = ref.watch(locationProvider);
   final allServices = <SubServiceModel>[];
 
   for (final category in activeCategories) {
     try {
-      final services = await repo.getSubServices(category.id);
+      final services = await repo.getSubServices(
+        category.id,
+        pincode: locationState.currentPincode,
+      );
       allServices.addAll(services);
     } catch (_) {
       // Skip categories with errors

@@ -66,6 +66,55 @@ class BookingRemoteDataSource {
     return _extractData(response.data);
   }
 
+  Future<Map<String, dynamic>> submitReview(
+    String bookingId,
+    int rating,
+    String? comment,
+  ) async {
+    final response = await _dio.post(
+      ApiEndpoints.bookingReview(bookingId),
+      data: {
+        'rating': rating,
+        if (comment != null && comment.isNotEmpty) 'comment': comment,
+      },
+    );
+    return _extractData(response.data);
+  }
+
+  Future<Map<String, dynamic>> approveRevision(String bookingId) async {
+    final response = await _dio.patch(ApiEndpoints.bookingApproveRevision(bookingId));
+    return _extractData(response.data);
+  }
+
+  Future<Map<String, dynamic>> rejectRevision(String bookingId) async {
+    final response = await _dio.patch(ApiEndpoints.bookingRejectRevision(bookingId));
+    return _extractData(response.data);
+  }
+
+  Future<List<String>> getAvailableSlots(String subServiceId, String pincode, String date) async {
+    final response = await _dio.get(
+      ApiEndpoints.availableSlots,
+      queryParameters: {
+        'subServiceId': subServiceId,
+        'pincode': pincode,
+        'date': date,
+      },
+    );
+    final data = _extractData(response.data);
+    // The backend returns an array of strings in `data` or directly.
+    if (data.containsKey('data') && data['data'] is List) {
+      return (data['data'] as List).map((e) => e.toString()).toList();
+    }
+    // If it's a direct list returned
+    if (response.data is List) {
+      return (response.data as List).map((e) => e.toString()).toList();
+    }
+    if (response.data is Map && response.data.containsKey('data') && response.data['data'] is List) {
+      return (response.data['data'] as List).map((e) => e.toString()).toList();
+    }
+    return [];
+  }
+
   List<dynamic> _extractList(dynamic data) {
     if (data is Map && data.containsKey('data')) {
       final innerData = data['data'];

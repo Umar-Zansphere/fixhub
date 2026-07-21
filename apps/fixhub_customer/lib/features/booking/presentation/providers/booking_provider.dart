@@ -21,15 +21,26 @@ final bookingDetailProvider = FutureProvider.family<BookingModel, String>((ref, 
   return repo.getBooking(id);
 });
 
+typedef AvailableSlotsParams = ({String subServiceId, String pincode, String date});
+
+final availableSlotsProvider = FutureProvider.family<List<String>, AvailableSlotsParams>((ref, params) async {
+  final repo = ref.watch(bookingRepositoryProvider);
+  return repo.getAvailableSlots(params.subServiceId, params.pincode, params.date);
+});
+
 final bookingActionProvider = StateNotifierProvider<BookingActionNotifier, AsyncValue<void>>((ref) {
-  return BookingActionNotifier(ref.watch(bookingRepositoryProvider), ref);
+  final dio = ref.watch(dioProvider);
+  final dataSource = BookingRemoteDataSource(dio);
+  return BookingActionNotifier(ref.watch(bookingRepositoryProvider), ref, dataSource);
 });
 
 class BookingActionNotifier extends StateNotifier<AsyncValue<void>> {
   final BookingRepository _repository;
   final Ref _ref;
+  final BookingRemoteDataSource _dataSource;
 
-  BookingActionNotifier(this._repository, this._ref) : super(const AsyncValue.data(null));
+  BookingActionNotifier(this._repository, this._ref, this._dataSource)
+      : super(const AsyncValue.data(null));
 
   Future<void> cancelBooking(String id, String reason) async {
     try {
@@ -43,5 +54,41 @@ class BookingActionNotifier extends StateNotifier<AsyncValue<void>> {
     }
   }
 
-  // TODO add rateBooking when endpoint is available
+  Future<void> submitReview(String bookingId, int rating, String? comment) async {
+    try {
+      state = const AsyncValue.loading();
+      await _dataSource.submitReview(bookingId, rating, comment);
+      state = const AsyncValue.data(null);
+      _ref.invalidate(bookingDetailProvider(bookingId));
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      rethrow;
+    }
+  }
+
+  Future<void> approveRevision(String bookingId) async {
+    try {
+      state = const AsyncValue.loading();
+      await _dataSource.approveRevision(bookingId);
+      state = const AsyncValue.data(null);
+      _ref.invalidate(bookingDetailProvider(bookingId));
+      _ref.invalidate(bookingsProvider);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      rethrow;
+    }
+  }
+
+  Future<void> rejectRevision(String bookingId) async {
+    try {
+      state = const AsyncValue.loading();
+      await _dataSource.rejectRevision(bookingId);
+      state = const AsyncValue.data(null);
+      _ref.invalidate(bookingDetailProvider(bookingId));
+      _ref.invalidate(bookingsProvider);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      rethrow;
+    }
+  }
 }

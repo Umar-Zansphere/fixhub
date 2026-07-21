@@ -22,6 +22,7 @@ class ApiEndpoints {
   static const String bookings = '/bookings';
   static const String bookingDraft = '/bookings/draft';
   static const String bookingSummary = '/bookings/summary';
+  static const String availableSlots = '/bookings/available-slots';
   static String bookingConfirm(String id) => '/bookings/$id/confirm';
   static String bookingDetail(String id) => '/bookings/$id';
   static String cancelBooking(String id) => '/bookings/$id/cancel';
@@ -29,9 +30,13 @@ class ApiEndpoints {
   static String bookingMediaBatch(String id) => '/bookings/$id/media/batch';
   static String bookingStatus(String id) => '/bookings/$id/status';
   static const String bookingHistory = '/bookings/history';
+  static String bookingReview(String id) => '/bookings/$id/review';
+  static String bookingApproveRevision(String id) => '/bookings/$id/approve-revision';
+  static String bookingRejectRevision(String id) => '/bookings/$id/reject-revision';
 
   // ── Service Catalog ─────────────────────────────────────────
   static const String categories = '/categories';
+  static const String services = '/services';
   static String categoryServices(String categoryId) =>
       '/services?categoryId=$categoryId';
   static String subServiceDetail(String id) => '/services/$id';

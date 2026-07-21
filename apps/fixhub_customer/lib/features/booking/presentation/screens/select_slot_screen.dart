@@ -9,6 +9,8 @@ import '../../../../core/widgets/fixhub_app_bar.dart';
 import '../../../../core/widgets/fixhub_button.dart';
 import '../../../../core/router/route_names.dart';
 import '../providers/booking_flow_provider.dart';
+import '../providers/booking_provider.dart';
+import '../../../location/presentation/providers/location_provider.dart';
 import '../../data/models/time_slot_model.dart';
 import '../../../../core/widgets/fixhub_empty_state.dart';
 
@@ -71,8 +73,20 @@ class _SelectSlotScreenState extends ConsumerState<SelectSlotScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final slots = _getSlotsForDate(_selectedDate);
-    final availableSlots = slots.where((s) => s.isAvailable).toList();
+    final locationState = ref.watch(locationProvider);
+    final bookingFlowState = ref.watch(bookingFlowProvider);
+    final subServiceId = bookingFlowState.selectedService?.id;
+    final pincode = locationState.currentPincode;
+    final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+
+    AsyncValue<List<String>> availableSlotsAsync = const AsyncValue.data([]);
+    if (subServiceId != null && pincode != null) {
+      availableSlotsAsync = ref.watch(availableSlotsProvider((
+        subServiceId: subServiceId,
+        pincode: pincode,
+        date: dateStr,
+      )));
+    }
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -187,79 +201,105 @@ class _SelectSlotScreenState extends ConsumerState<SelectSlotScreen> {
 
           const SizedBox(height: AppSpacing.xl),
 
-          // ── Time Slots Section ───────────────────────────────
-          Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.screenPadding,
-            ),
-            child: Row(
-              children: [
-                Text(
-                  'Available Times',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                      ),
-                ),
-                const SizedBox(width: AppSpacing.xs),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.xs,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    '${availableSlots.length} slots',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textSecondary,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-
           Expanded(
-            child: slots.isEmpty || availableSlots.isEmpty
-                ? FixHubEmptyState(
-                    icon: Icons.event_busy_rounded,
-                    title: 'No slots available',
-                    message: availableSlots.isEmpty && slots.isNotEmpty
-                        ? 'All slots for today have passed. Please select a future date.'
-                        : 'No slots available for this date.',
-                  )
-                : ListView.separated(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.screenPadding,
-                    ),
-                    itemCount: slots.length,
-                    separatorBuilder: (_, __) =>
-                        const SizedBox(height: AppSpacing.sm),
-                    itemBuilder: (context, index) {
-                      final slot = slots[index];
-                      final isSelected = _selectedSlot == slot;
-                      final isPast = !slot.isAvailable;
+            child: availableSlotsAsync.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (err, _) => FixHubEmptyState(
+                icon: Icons.error_outline,
+                title: 'Error loading slots',
+                message: err.toString(),
+              ),
+              data: (backendAvailableSlots) {
+                // Map local slots, check availability against backend list
+                final slots = _allSlots.map((raw) {
+                  final slot24h = '${raw.startHour.toString().padLeft(2, '0')}:00-${(raw.startHour + 2).toString().padLeft(2, '0')}:00';
+                  return TimeSlotModel(
+                    date: _selectedDate,
+                    startTime: raw.label.split('–').first.trim(),
+                    endTime: raw.label.split('–').last.trim(),
+                    isAvailable: backendAvailableSlots.contains(slot24h),
+                  );
+                }).toList();
 
-                      return _SlotTile(
-                        slot: slot,
-                        isSelected: isSelected,
-                        isPast: isPast,
-                        onTap: isPast
-                            ? null
-                            : () {
-                                setState(() {
-                                  _selectedSlot = slot;
-                                });
+                final availableCount = slots.where((s) => s.isAvailable).length;
+
+                return Column(
+                  children: [
+                    // ── Time Slots Section ───────────────────────────────
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.screenPadding,
+                      ),
+                      child: Row(
+                        children: [
+                          Text(
+                            'Available Times',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textPrimary,
+                                ),
+                          ),
+                          const SizedBox(width: AppSpacing.xs),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.xs,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              '$availableCount slots',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    Expanded(
+                      child: slots.isEmpty || availableCount == 0
+                          ? FixHubEmptyState(
+                              icon: Icons.event_busy_rounded,
+                              title: 'No slots available',
+                              message: 'No slots available for this date.',
+                            )
+                          : ListView.separated(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.screenPadding,
+                              ),
+                              itemCount: slots.length,
+                              separatorBuilder: (_, __) =>
+                                  const SizedBox(height: AppSpacing.sm),
+                              itemBuilder: (context, index) {
+                                final slot = slots[index];
+                                final isSelected = _selectedSlot == slot;
+                                final isPast = !slot.isAvailable;
+
+                                return _SlotTile(
+                                  slot: slot,
+                                  isSelected: isSelected,
+                                  isPast: isPast,
+                                  onTap: isPast
+                                      ? null
+                                      : () {
+                                          setState(() {
+                                            _selectedSlot = slot;
+                                          });
+                                        },
+                                );
                               },
-                      );
-                    },
-                  ),
+                            ),
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
 
           // ── CTA ─────────────────────────────────────────────

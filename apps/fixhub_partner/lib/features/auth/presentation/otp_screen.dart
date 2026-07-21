@@ -12,8 +12,9 @@ import '../domain/auth_state.dart';
 
 class OtpScreen extends ConsumerStatefulWidget {
   final String phone;
+  final String? devOtp;
 
-  const OtpScreen({super.key, required this.phone});
+  const OtpScreen({super.key, required this.phone, this.devOtp});
 
   @override
   ConsumerState<OtpScreen> createState() => _OtpScreenState();
@@ -21,6 +22,7 @@ class OtpScreen extends ConsumerStatefulWidget {
 
 class _OtpScreenState extends ConsumerState<OtpScreen> {
   final _otpController = TextEditingController();
+  final _focusNode = FocusNode();
   bool _isVerifying = false;
   bool _isResending = false;
   String? _errorMessage;
@@ -31,6 +33,14 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
   void initState() {
     super.initState();
     _startCountdown();
+    // Auto-fill dev OTP after the first frame is rendered
+    if (widget.devOtp != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _otpController.text.isEmpty) {
+          _otpController.text = widget.devOtp!;
+        }
+      });
+    }
   }
 
   void _startCountdown() {
@@ -48,6 +58,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
   @override
   void dispose() {
     _otpController.dispose();
+    _focusNode.dispose();
     _timer?.cancel();
     super.dispose();
   }
@@ -91,8 +102,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
         );
       }
     } catch (e) {
-      if (mounted)
-        setState(() => _errorMessage = 'Failed to resend OTP. Try again.');
+      if (mounted) setState(() => _errorMessage = 'Failed to resend OTP. Try again.');
     } finally {
       if (mounted) setState(() => _isResending = false);
     }
@@ -108,12 +118,6 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
       return 'Too many attempts. Please request a new OTP.';
     if (msg.contains('network')) return 'No internet connection.';
     return 'Verification failed. Please try again.';
-  }
-
-  String _maskPhone(String phone) {
-    if (phone.length < 6) return phone;
-    final visible = phone.substring(phone.length - 4);
-    return '${phone.substring(0, phone.indexOf(phone.replaceAll(RegExp(r'[^+0-9]'), '').substring(0, 2)))}XXXXXX$visible';
   }
 
   @override
@@ -162,7 +166,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
             children: [
               const SizedBox(height: AppSpacing.lg),
 
-              // Back
+              // Back button
               IconButton(
                 onPressed: () => context.pop(),
                 icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
@@ -193,12 +197,46 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                   ],
                 ),
               ),
+
+              // ── Dev-mode OTP banner ──────────────────────────────
+              if (widget.devOtp != null) ...[
+                const SizedBox(height: AppSpacing.md),
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.sm),
+                  decoration: BoxDecoration(
+                    color: AppColors.warning.withValues(alpha: 0.1),
+                    borderRadius: AppRadius.chip,
+                    border: Border.all(color: AppColors.warning),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.bug_report_outlined,
+                        color: AppColors.warning,
+                        size: 20,
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Text(
+                          'Dev Mode: Your OTP is ${widget.devOtp}',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: AppColors.warning,
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+
               const SizedBox(height: AppSpacing.xxxl),
 
-              // OTP input
+              // OTP Pinput
               Center(
                 child: Pinput(
                   controller: _otpController,
+                  focusNode: _focusNode,
                   length: 6,
                   defaultPinTheme: defaultPinTheme,
                   focusedPinTheme: focusedPinTheme,
@@ -207,12 +245,13 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                   onCompleted: (_) => _verify(),
                   keyboardType: TextInputType.number,
                   autofocus: true,
+                  closeKeyboardWhenCompleted: false,
                 ),
               ),
 
               const SizedBox(height: AppSpacing.xl),
 
-              // Error
+              // Error message
               if (_errorMessage != null)
                 Container(
                   padding: const EdgeInsets.all(AppSpacing.md),
@@ -246,16 +285,19 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
 
               const SizedBox(height: AppSpacing.xl),
 
-              // Verify button
-              FpButton(
-                label: 'Verify OTP',
-                isLoading: _isVerifying,
-                onPressed: _otpController.text.length == 6 ? _verify : null,
+              // Verify button — reacts to controller length via ListenableBuilder
+              ListenableBuilder(
+                listenable: _otpController,
+                builder: (context, _) => FpButton(
+                  label: 'Verify OTP',
+                  isLoading: _isVerifying,
+                  onPressed: _otpController.text.length == 6 ? _verify : null,
+                ),
               ),
 
               const SizedBox(height: AppSpacing.xl),
 
-              // Resend
+              // Resend countdown / button
               Center(
                 child: _countdown > 0
                     ? Text.rich(

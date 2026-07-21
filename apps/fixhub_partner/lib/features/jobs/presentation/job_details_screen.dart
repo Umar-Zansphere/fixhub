@@ -307,6 +307,22 @@ class _JobDetailsBodyState extends ConsumerState<_JobDetailsBody> {
                   ),
                 ],
 
+                // ── Issue Media ──────────────────────────────────
+                if (job.media.where((m) => m.phase == 'BEFORE_SERVICE').isNotEmpty) ...[
+                  const SizedBox(height: AppSpacing.base),
+                  _Section(
+                    title: 'Issue Media',
+                    child: Wrap(
+                      spacing: AppSpacing.sm,
+                      runSpacing: AppSpacing.sm,
+                      children: job.media
+                          .where((m) => m.phase == 'BEFORE_SERVICE')
+                          .map((m) => _MediaThumbReadOnly(media: m))
+                          .toList(),
+                    ),
+                  ),
+                ],
+
                 const SizedBox(height: AppSpacing.base),
 
                 // ── Timeline ─────────────────────────────────────
@@ -480,3 +496,75 @@ class _TimelineRow extends StatelessWidget {
     );
   }
 }
+
+class _MediaThumbReadOnly extends StatelessWidget {
+  const _MediaThumbReadOnly({required this.media});
+
+  final JobMedia media;
+
+  @override
+  Widget build(BuildContext context) {
+    final isVideo = media.type == 'VIDEO';
+
+    return GestureDetector(
+      onTap: () {
+        final uri = Uri.parse(media.url);
+        launchUrl(uri);
+      },
+      child: SizedBox(
+        width: 80,
+        height: 80,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: isVideo
+                  ? Container(
+                      color: AppColors.surfaceVariant,
+                      child: const Center(
+                        child: Icon(
+                          Icons.videocam_rounded,
+                          size: 32,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    )
+                  : Image.network(
+                      media.url,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        color: AppColors.surfaceVariant,
+                        child: const Icon(Icons.broken_image_rounded,
+                            color: AppColors.textSecondary),
+                      ),
+                    ),
+            ),
+            // Video label chip
+            if (isVideo)
+              Positioned(
+                bottom: 4,
+                left: 4,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text(
+                    'VIDEO',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 8,
+                        fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+

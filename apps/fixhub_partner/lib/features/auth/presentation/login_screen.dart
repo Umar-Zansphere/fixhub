@@ -54,7 +54,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         );
         return;
       }
-      context.push('/otp', extra: _formattedPhone);
+      final devOtp = result['devOtp'] as String?;
+      context.push('/otp', extra: {'phone': _formattedPhone, 'devOtp': devOtp});
     } catch (e) {
       setState(() => _errorMessage = _humanizeError(e));
     } finally {
