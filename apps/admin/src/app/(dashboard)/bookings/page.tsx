@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useBookings } from '@/lib/api/queries/use-bookings';
 import type { Booking, BookingStatus } from '@/lib/types';
 import { bookingStatusLabel, bookingStatusVariant, formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
-import { Avatar, Badge, Button, Select, Drawer, Skeleton } from '@/components/ui';
+import { Avatar, Badge, Button, Select, Tabs } from '@/components/ui';
 import { DataTable, SortableHeader } from '@/components/data-table/data-table';
 import { BookingDrawer } from '@/components/bookings/booking-drawer';
 
@@ -32,6 +32,7 @@ function BookingStatusBadge({ status }: { status: BookingStatus }) {
 }
 
 export default function BookingsPage() {
+  const [tab, setTab] = React.useState('active');
   const [page, setPage] = React.useState(1);
   const [limit] = React.useState(20);
   const [statusFilter, setStatusFilter] = React.useState<BookingStatus | ''>('');
@@ -43,6 +44,7 @@ export default function BookingsPage() {
     status: statusFilter || undefined,
     sortBy: 'createdAt',
     sortOrder: 'desc',
+    isHistory: tab === 'history',
   });
 
   const columns: ColumnDef<Booking, unknown>[] = [
@@ -162,6 +164,16 @@ export default function BookingsPage() {
           </p>
         </div>
       </div>
+
+      {/* Tabs */}
+      <Tabs
+        tabs={[
+          { id: 'active', label: 'Active Bookings' },
+          { id: 'history', label: 'Booking History' },
+        ]}
+        activeTab={tab}
+        onChange={(newTab) => { setTab(newTab); setPage(1); setStatusFilter(''); }}
+      />
 
       {/* Table */}
       <DataTable

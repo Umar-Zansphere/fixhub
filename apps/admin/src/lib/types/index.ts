@@ -327,8 +327,10 @@ export interface ApiResponse<T = unknown> {
 
 export interface PaginatedResponse<T = unknown> {
   success: boolean;
-  items: T[];
-  meta: PaginationMeta;
+  data: {
+    items: T[];
+    meta: PaginationMeta;
+  };
   message?: string;
   timestamp?: string;
 }

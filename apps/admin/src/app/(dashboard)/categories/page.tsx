@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
 
-import { useCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from '@/lib/api/queries/use-categories';
+import { useCategories, useCreateCategory, useUpdateCategory, useDeleteCategory, useCategory } from '@/lib/api/queries/use-categories';
 import type { Category } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
 import { Badge, Button, Dialog, Input, Skeleton } from '@/components/ui';
@@ -24,12 +24,15 @@ type CategoryForm = z.infer<typeof categorySchema>;
 function CategoryDialog({
   open,
   onClose,
-  editCategory,
+  editCategoryId,
 }: {
   open: boolean;
   onClose: () => void;
-  editCategory?: Category | null;
+  editCategoryId?: string | null;
 }) {
+  const { data: categoryData, isLoading: isLoadingCategory } = useCategory(editCategoryId ?? undefined);
+  const editCategory = categoryData;
+
   const createMutation = useCreateCategory();
   const updateMutation = useUpdateCategory();
   const {
@@ -39,9 +42,7 @@ function CategoryDialog({
     formState: { errors },
   } = useForm<CategoryForm>({
     resolver: zodResolver(categorySchema),
-    defaultValues: editCategory
-      ? { name: editCategory.name, iconUrl: editCategory.iconUrl ?? '', sortOrder: editCategory.sortOrder, isActive: editCategory.isActive }
-      : { name: '', iconUrl: '', sortOrder: 0, isActive: true },
+    defaultValues: { name: '', iconUrl: '', sortOrder: 0, isActive: true },
   });
 
   React.useEffect(() => {
@@ -99,11 +100,11 @@ export default function CategoriesPage() {
   const { data: categories, isLoading } = useCategories();
   const deleteMutation = useDeleteCategory();
   const [dialogOpen, setDialogOpen] = React.useState(false);
-  const [editCategory, setEditCategory] = React.useState<Category | null>(null);
+  const [editCategoryId, setEditCategoryId] = React.useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = React.useState<Category | null>(null);
 
-  const openCreate = () => { setEditCategory(null); setDialogOpen(true); };
-  const openEdit = (cat: Category) => { setEditCategory(cat); setDialogOpen(true); };
+  const openCreate = () => { setEditCategoryId(null); setDialogOpen(true); };
+  const openEdit = (cat: Category) => { setEditCategoryId(cat.id); setDialogOpen(true); };
 
   return (
     <div className="space-y-4 fade-in">
@@ -165,7 +166,7 @@ export default function CategoriesPage() {
       <CategoryDialog
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
-        editCategory={editCategory}
+        editCategoryId={editCategoryId}
       />
 
       {/* Delete confirmation */}

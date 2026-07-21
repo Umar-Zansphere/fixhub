@@ -2,10 +2,12 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { useBooking } from '@/lib/api/queries/use-bookings';
+import { useBooking, useAssignTechnician } from '@/lib/api/queries/use-bookings';
+import { useTechnicians } from '@/lib/api/queries/use-technicians';
 import { bookingStatusLabel, bookingStatusVariant, formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
 import type { BookingStatus, BookingTimeline } from '@/lib/types';
-import { Avatar, Badge, Button, Card, CardContent, CardHeader, CardTitle, Skeleton } from '@/components/ui';
+import { Avatar, Badge, Button, Card, CardContent, CardHeader, CardTitle, Skeleton, Dialog, Select } from '@/components/ui';
+import { toast } from 'sonner';
 import { ArrowLeft, CheckCircle, Clock, MapPin, Phone, User } from 'lucide-react';
 
 function TimelineItem({ entry, isLast }: { entry: BookingTimeline; isLast: boolean }) {
@@ -34,9 +36,78 @@ function TimelineItem({ entry, isLast }: { entry: BookingTimeline; isLast: boole
   );
 }
 
+function AssignTechnicianDialog({
+  open,
+  onClose,
+  bookingId,
+}: {
+  open: boolean;
+  onClose: () => void;
+  bookingId: string;
+}) {
+  const { data: techData, isLoading: isLoadingTechs } = useTechnicians({ limit: 100 });
+  const assignMutation = useAssignTechnician();
+  const [selectedTech, setSelectedTech] = React.useState('');
+
+  React.useEffect(() => {
+    if (open) setSelectedTech('');
+  }, [open]);
+
+  const handleAssign = () => {
+    if (!selectedTech) return toast.error('Please select a technician');
+    assignMutation.mutate(
+      { bookingId, technicianId: selectedTech },
+      {
+        onSuccess: () => {
+          toast.success('Technician assigned successfully');
+          onClose();
+        },
+        onError: () => toast.error('Failed to assign technician'),
+      }
+    );
+  };
+
+  const options = (techData?.items ?? [])
+    .filter((t) => t.isActive && t.verificationStatus === 'APPROVED')
+    .map((t) => ({
+      label: `${t.user?.name || 'Unknown'} (${t.user?.phone})`,
+      value: t.id,
+    }));
+
+  return (
+    <Dialog open={open} onClose={onClose} title="Assign Technician">
+      <div className="space-y-4">
+        {isLoadingTechs ? (
+          <p className="text-sm text-[#6B7280]">Loading technicians...</p>
+        ) : options.length === 0 ? (
+          <p className="text-sm text-[#EF4444]">No approved/active technicians available.</p>
+        ) : (
+          <Select
+            label="Select Technician"
+            options={options}
+            value={selectedTech}
+            onChange={(e) => setSelectedTech(e.target.value)}
+          />
+        )}
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button
+            onClick={handleAssign}
+            loading={assignMutation.isPending}
+            disabled={!selectedTech}
+          >
+            Confirm
+          </Button>
+        </div>
+      </div>
+    </Dialog>
+  );
+}
+
 export default function BookingDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = React.use(params);
   const { data: booking, isLoading } = useBooking(resolvedParams.id);
+  const [assignDialogOpen, setAssignDialogOpen] = React.useState(false);
 
   if (isLoading) {
     return (
@@ -131,7 +202,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
           <Card>
             <CardHeader>
               <CardTitle>Technician</CardTitle>
-              <Button variant="secondary" size="sm">Reassign</Button>
+              <Button variant="secondary" size="sm" onClick={() => setAssignDialogOpen(true)}>Reassign</Button>
             </CardHeader>
             <CardContent>
               {booking.technician ? (
@@ -153,7 +224,7 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
               ) : (
                 <div className="flex items-center justify-between rounded-lg bg-[#FFFBEB] px-4 py-3">
                   <span className="text-sm text-[#92400E]">No technician assigned</span>
-                  <Button size="sm">Assign Technician</Button>
+                  <Button size="sm" onClick={() => setAssignDialogOpen(true)}>Assign Technician</Button>
                 </div>
               )}
             </CardContent>
@@ -233,6 +304,12 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
           )}
         </div>
       </div>
+
+      <AssignTechnicianDialog
+        open={assignDialogOpen}
+        onClose={() => setAssignDialogOpen(false)}
+        bookingId={resolvedParams.id}
+      />
     </div>
   );
 }

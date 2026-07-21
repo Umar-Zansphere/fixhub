@@ -9,11 +9,22 @@ export function useServices(categoryId?: string) {
   return useQuery({
     queryKey: ['services', categoryId],
     queryFn: async () => {
-      const { data } = await apiClient.get<{ data: SubService[] }>(endpoints.catalog.services, {
+      const { data } = await apiClient.get<{ data: { items: SubService[] } }>(endpoints.catalog.services, {
         params: categoryId ? { categoryId } : undefined,
       });
+      return data.data.items;
+    },
+  });
+}
+
+export function useService(id?: string) {
+  return useQuery({
+    queryKey: ['services', id],
+    queryFn: async () => {
+      const { data } = await apiClient.get<{ data: SubService }>(endpoints.catalog.service(id!));
       return data.data;
     },
+    enabled: !!id,
   });
 }
 

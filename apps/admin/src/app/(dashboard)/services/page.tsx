@@ -8,7 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
 
-import { useServices, useCreateService, useUpdateService, useDeleteService } from '@/lib/api/queries/use-services';
+import { useServices, useCreateService, useUpdateService, useDeleteService, useService } from '@/lib/api/queries/use-services';
 import { useCategories } from '@/lib/api/queries/use-categories';
 import type { SubService } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
@@ -26,16 +26,17 @@ const serviceSchema = z.object({
 type ServiceForm = z.infer<typeof serviceSchema>;
 
 function ServiceDialog({
-  open, onClose, editService,
-}: { open: boolean; onClose: () => void; editService?: SubService | null }) {
+  open, onClose, editServiceId,
+}: { open: boolean; onClose: () => void; editServiceId?: string | null }) {
   const { data: categories } = useCategories();
+  const { data: serviceData } = useService(editServiceId ?? undefined);
+  const editService = serviceData;
+
   const createMutation = useCreateService();
   const updateMutation = useUpdateService();
   const { register, handleSubmit, reset, formState: { errors } } = useForm<ServiceForm>({
     resolver: zodResolver(serviceSchema),
-    defaultValues: editService
-      ? { name: editService.name, categoryId: editService.categoryId, description: editService.description ?? '', basePrice: Number(editService.basePrice), estimatedDurationMins: editService.estimatedDurationMins, isActive: editService.isActive }
-      : { name: '', categoryId: '', description: '', basePrice: 0, estimatedDurationMins: 60, isActive: true },
+    defaultValues: { name: '', categoryId: '', description: '', basePrice: 0, estimatedDurationMins: 60, isActive: true },
   });
 
   React.useEffect(() => {
@@ -89,7 +90,7 @@ export default function ServicesPage() {
   const { data: services, isLoading } = useServices();
   const deleteMutation = useDeleteService();
   const [dialogOpen, setDialogOpen] = React.useState(false);
-  const [editService, setEditService] = React.useState<SubService | null>(null);
+  const [editServiceId, setEditServiceId] = React.useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = React.useState<SubService | null>(null);
 
   const columns: ColumnDef<SubService, unknown>[] = [
@@ -147,7 +148,7 @@ export default function ServicesPage() {
       header: '',
       cell: ({ row }) => (
         <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditService(row.original); setDialogOpen(true); }}>
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditServiceId(row.original.id); setDialogOpen(true); }}>
             <Pencil className="h-3.5 w-3.5" />
           </Button>
           <Button variant="ghost" size="icon" className="h-7 w-7 text-[#EF4444] hover:bg-[#FEF2F2]" onClick={() => setDeleteConfirm(row.original)}>
@@ -166,7 +167,7 @@ export default function ServicesPage() {
           <h1 className="text-xl font-bold text-[#111827]">Services</h1>
           <p className="mt-0.5 text-sm text-[#6B7280]">{services?.length ?? 0} sub-services</p>
         </div>
-        <Button onClick={() => { setEditService(null); setDialogOpen(true); }} leftIcon={<Plus className="h-4 w-4" />}>
+        <Button onClick={() => { setEditServiceId(null); setDialogOpen(true); }} leftIcon={<Plus className="h-4 w-4" />}>
           New Service
         </Button>
       </div>
@@ -180,7 +181,7 @@ export default function ServicesPage() {
         emptyDescription="Create your first service to get started."
       />
 
-      <ServiceDialog open={dialogOpen} onClose={() => setDialogOpen(false)} editService={editService} />
+      <ServiceDialog open={dialogOpen} onClose={() => setDialogOpen(false)} editServiceId={editServiceId} />
 
       <Dialog open={!!deleteConfirm} onClose={() => setDeleteConfirm(null)} title="Delete Service" description={`Delete "${deleteConfirm?.name}"? Services linked to bookings cannot be deleted.`}>
         <div className="flex justify-end gap-2">

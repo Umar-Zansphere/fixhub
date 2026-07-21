@@ -4,6 +4,10 @@ import * as React from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
 
 import { useBookings } from '@/lib/api/queries/use-bookings';
+import { apiClient } from '@/lib/api/client';
+import { endpoints } from '@/lib/api/endpoints';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import type { Booking } from '@/lib/types';
 import { formatCurrency, formatDateTime, paymentStatusVariant } from '@/lib/utils';
 import { Badge, Button, Tabs } from '@/components/ui';
@@ -12,9 +16,24 @@ import { DataTable, SortableHeader } from '@/components/data-table/data-table';
 export default function PaymentsPage() {
   const [tab, setTab] = React.useState('all');
   const [page, setPage] = React.useState(1);
+  const queryClient = useQueryClient();
 
   // Payments are fetched via bookings that have payment data
   const { data, isLoading } = useBookings({ page, limit: 20 });
+
+  const refundMutation = useMutation({
+    mutationFn: async (paymentId: string) => {
+      const { data } = await apiClient.post(endpoints.payments.refund(paymentId));
+      return data;
+    },
+    onSuccess: () => {
+      toast.success('Payment refunded successfully');
+      queryClient.invalidateQueries({ queryKey: ['bookings'] });
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || 'Failed to refund payment');
+    }
+  });
 
   const bookingsWithPayments = (data?.items ?? []).filter((b) => b.payment);
 
@@ -88,9 +107,35 @@ export default function PaymentsPage() {
       ),
       size: 150,
     },
+    {
+      id: 'actions',
+      header: '',
+      cell: ({ row }) => {
+        const payment = row.original.payment;
+        if (!payment || payment.status !== 'CAPTURED') return null;
+
+        return (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleRefund(payment.id)}
+            disabled={refundMutation.isPending && refundMutation.variables === payment.id}
+          >
+            {refundMutation.isPending && refundMutation.variables === payment.id ? 'Refunding...' : 'Refund'}
+          </Button>
+        );
+      },
+      size: 100,
+    },
   ];
 
   const pageCount = data?.meta ? Math.ceil(data.meta.total / 20) : 1;
+
+  const handleRefund = (paymentId: string) => {
+    if (window.confirm('Are you sure you want to refund this payment? This action cannot be undone.')) {
+      refundMutation.mutate(paymentId);
+    }
+  };
 
   return (
     <div className="space-y-4 fade-in">

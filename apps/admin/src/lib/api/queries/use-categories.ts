@@ -9,9 +9,20 @@ export function useCategories() {
   return useQuery({
     queryKey: ['categories'],
     queryFn: async () => {
-      const { data } = await apiClient.get<{ data: Category[] }>(endpoints.catalog.categories);
+      const { data } = await apiClient.get<{ data: { items: Category[] } }>(endpoints.catalog.categories);
+      return data.data.items;
+    },
+  });
+}
+
+export function useCategory(id?: string) {
+  return useQuery({
+    queryKey: ['categories', id],
+    queryFn: async () => {
+      const { data } = await apiClient.get<{ data: Category }>(endpoints.catalog.category(id!));
       return data.data;
     },
+    enabled: !!id,
   });
 }
 

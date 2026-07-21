@@ -5,14 +5,19 @@ import type { Booking, BookingQueryParams, PaginatedResponse } from '@/lib/types
 import { apiClient } from '../client';
 import { endpoints } from '../endpoints';
 
-export function useBookings(params?: BookingQueryParams) {
+export function useBookings(params?: BookingQueryParams & { isHistory?: boolean }) {
   return useQuery({
     queryKey: ['bookings', params],
     queryFn: async () => {
-      const { data } = await apiClient.get<PaginatedResponse<Booking>>(endpoints.bookings.list, {
-        params,
+      const endpoint = params?.isHistory ? endpoints.bookings.history : endpoints.bookings.list;
+      // Copy params and remove isHistory before sending to API
+      const apiParams = { ...params };
+      delete apiParams.isHistory;
+      
+      const { data } = await apiClient.get<PaginatedResponse<Booking>>(endpoint, {
+        params: apiParams,
       });
-      return data;
+      return data.data;
     },
   });
 }

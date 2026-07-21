@@ -13,7 +13,7 @@ export function useCustomers(params?: CustomerQueryParams) {
         endpoints.admin.customers,
         { params },
       );
-      return data;
+      return data.data;
     },
   });
 }

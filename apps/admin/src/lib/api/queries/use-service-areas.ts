@@ -13,7 +13,7 @@ export function useServiceAreas(params?: { page?: number; limit?: number; search
         endpoints.serviceAreas.list,
         { params },
       );
-      return data;
+      return data.data;
     },
   });
 }

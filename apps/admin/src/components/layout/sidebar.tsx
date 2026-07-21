@@ -75,14 +75,33 @@ const navGroups: NavGroup[] = [
   },
 ];
 
+import { useMutation } from '@tanstack/react-query';
+import { apiClient } from '@/lib/api/client';
+import { endpoints } from '@/lib/api/endpoints';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
+
 export function Sidebar() {
   const [collapsed, setCollapsed] = React.useState(false);
   const pathname = usePathname();
+  const router = useRouter();
 
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/';
     return pathname.startsWith(href);
   };
+
+  const logoutMutation = useMutation({
+    mutationFn: async () => {
+      await apiClient.post(endpoints.auth.logout);
+    },
+    onSettled: () => {
+      // Regardless of success or failure, we clear local storage and redirect
+      // to ensure the user is not stuck if the token is already expired.
+      localStorage.removeItem('fixhub_admin_token');
+      router.push('/login');
+    }
+  });
 
   return (
     <aside
@@ -169,13 +188,11 @@ export function Sidebar() {
         </Link>
         <button
           className={cn('nav-item w-full text-[#6B7280] mt-0.5', collapsed && 'justify-center')}
-          onClick={() => {
-            localStorage.removeItem('fixhub_admin_token');
-            window.location.href = '/login';
-          }}
+          onClick={() => logoutMutation.mutate()}
+          disabled={logoutMutation.isPending}
         >
           <LogOut className="h-4 w-4 flex-shrink-0 text-[#9CA3AF]" />
-          {!collapsed && <span>Sign out</span>}
+          {!collapsed && <span>{logoutMutation.isPending ? 'Signing out...' : 'Sign out'}</span>}
         </button>
       </div>
     </aside>

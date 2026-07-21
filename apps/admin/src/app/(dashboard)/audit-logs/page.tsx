@@ -4,6 +4,7 @@ import * as React from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
+import { endpoints } from '@/lib/api/endpoints';
 import type { AuditLog } from '@/lib/types';
 import { formatDateTime } from '@/lib/utils';
 import { Badge } from '@/components/ui';
@@ -20,9 +21,10 @@ export default function AuditLogsPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['audit-logs', page],
     queryFn: async () => {
-      // Audit logs would be exposed via a dedicated admin endpoint
-      // For now returning empty as the endpoint needs to be added to backend
-      return { items: [] as AuditLog[], meta: { total: 0, page, limit: 20, totalPages: 1, hasNextPage: false, hasPreviousPage: false } };
+      const res = await apiClient.get(endpoints.admin.auditLogs, {
+        params: { page, limit: 20 },
+      });
+      return res.data;
     },
   });
 
@@ -79,12 +81,6 @@ export default function AuditLogsPage() {
       <div>
         <h1 className="text-xl font-bold text-[#111827]">Audit Logs</h1>
         <p className="mt-0.5 text-sm text-[#6B7280]">Immutable record of all platform mutations</p>
-      </div>
-
-      <div className="rounded-lg bg-[#FFFBEB] border border-[#FDE68A] px-4 py-3">
-        <p className="text-sm text-[#92400E]">
-          <strong>Note:</strong> Audit log API endpoint is pending backend implementation. Logs will appear here automatically once the <code>/admin/audit-logs</code> endpoint is added.
-        </p>
       </div>
 
       <DataTable

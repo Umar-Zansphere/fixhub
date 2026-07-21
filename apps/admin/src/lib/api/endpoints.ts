@@ -1,8 +1,7 @@
 export const endpoints = {
   // Auth
   auth: {
-    sendOtp: '/auth/send-otp',
-    verifyOtp: '/auth/verify-otp',
+    adminLogin: '/auth/admin/login',
     refresh: '/auth/refresh',
     logout: '/auth/logout',
     me: '/auth/me',
@@ -22,6 +21,10 @@ export const endpoints = {
     technician: (id: string) => `/admin/technicians/${id}`,
     technicianStatus: (userId: string) => `/admin/technicians/${userId}/status`,
     technicianVerify: (id: string) => `/admin/technicians/${id}/verify`,
+    
+    // System
+    auditLogs: '/admin/audit-logs',
+    settings: '/admin/settings',
   },
 
   // Bookings (admin)
@@ -32,12 +35,12 @@ export const endpoints = {
     assign: (id: string) => `/admin/bookings/${id}/assign`,
   },
 
-  // Catalog (public GET, admin mutations)
+  // Catalog (admin endpoints for listing, creating, etc.)
   catalog: {
-    categories: '/catalog/categories',
-    category: (id: string) => `/catalog/categories/${id}`,
-    services: '/catalog/services',
-    service: (id: string) => `/catalog/services/${id}`,
+    categories: '/admin/categories',
+    category: (id: string) => `/admin/categories/${id}`,
+    services: '/admin/services',
+    service: (id: string) => `/admin/services/${id}`,
     // Admin CRUD
     createCategory: '/admin/categories',
     updateCategory: (id: string) => `/admin/categories/${id}`,

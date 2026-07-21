@@ -12,59 +12,33 @@ import { endpoints } from '@/lib/api/endpoints';
 import { Button, Input } from '@/components/ui';
 import { Zap } from 'lucide-react';
 
-const phoneSchema = z.object({
-  phone: z.string().regex(/^\+?[0-9]{10,13}$/, 'Enter a valid phone number'),
+const loginSchema = z.object({
+  email: z.string().email('Enter a valid email address'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
 });
 
-const otpSchema = z.object({
-  otp: z.string().length(6, 'OTP must be 6 digits'),
-});
-
-type PhoneForm = z.infer<typeof phoneSchema>;
-type OtpForm = z.infer<typeof otpSchema>;
+type LoginForm = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const router = useRouter();
-  const [step, setStep] = React.useState<'phone' | 'otp'>('phone');
-  const [phone, setPhone] = React.useState('');
 
-  const phoneForm = useForm<PhoneForm>({
-    resolver: zodResolver(phoneSchema),
-    defaultValues: { phone: '' },
+  const form = useForm<LoginForm>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: '', password: '' },
   });
 
-  const otpForm = useForm<OtpForm>({
-    resolver: zodResolver(otpSchema),
-    defaultValues: { otp: '' },
-  });
-
-  const sendOtpMutation = useMutation({
-    mutationFn: async (data: PhoneForm) => {
-      const res = await apiClient.post(endpoints.auth.sendOtp, { phone: data.phone });
-      return res.data;
-    },
-    onSuccess: (_, vars) => {
-      setPhone(vars.phone);
-      setStep('otp');
-      toast.success('OTP sent to your phone');
-    },
-    onError: () => toast.error('Failed to send OTP. Please try again.'),
-  });
-
-  const verifyOtpMutation = useMutation({
-    mutationFn: async (data: OtpForm) => {
-      const res = await apiClient.post(endpoints.auth.verifyOtp, { phone, otp: data.otp });
-      return res.data;
+  const loginMutation = useMutation({
+    mutationFn: async (data: LoginForm) => {
+      const res = await apiClient.post(endpoints.auth.adminLogin, data);
+      return res.data.data;
     },
     onSuccess: (data) => {
-      if (data?.data?.accessToken) {
-        localStorage.setItem('fixhub_admin_token', data.data.accessToken);
-        router.push('/');
-      } else {
-        toast.error('Authentication failed. Ensure your account has Admin role.');
-      }
+      toast.success('Logged in successfully');
+      router.push('/');
     },
-    onError: () => toast.error('Invalid OTP. Please try again.'),
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || 'Invalid credentials. Please try again.');
+    },
   });
 
   return (
@@ -83,60 +57,37 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {step === 'phone' ? (
-            <form onSubmit={phoneForm.handleSubmit((d) => sendOtpMutation.mutate(d))} className="space-y-4">
-              <div>
-                <h2 className="text-base font-semibold text-[#111827]">Sign in</h2>
-                <p className="mt-0.5 text-sm text-[#6B7280]">Enter your registered phone number</p>
-              </div>
-              <Input
-                label="Phone Number"
-                placeholder="+91 98765 43210"
-                type="tel"
-                error={phoneForm.formState.errors.phone?.message}
-                {...phoneForm.register('phone')}
-              />
-              <Button
-                type="submit"
-                className="w-full"
-                loading={sendOtpMutation.isPending}
-              >
-                Send OTP
-              </Button>
-            </form>
-          ) : (
-            <form onSubmit={otpForm.handleSubmit((d) => verifyOtpMutation.mutate(d))} className="space-y-4">
-              <div>
-                <h2 className="text-base font-semibold text-[#111827]">Enter OTP</h2>
-                <p className="mt-0.5 text-sm text-[#6B7280]">
-                  Sent to <span className="font-medium text-[#374151]">{phone}</span>
-                </p>
-              </div>
-              <Input
-                label="6-Digit OTP"
-                placeholder="••••••"
-                maxLength={6}
-                inputMode="numeric"
-                error={otpForm.formState.errors.otp?.message}
-                {...otpForm.register('otp')}
-              />
-              <Button type="submit" className="w-full" loading={verifyOtpMutation.isPending}>
-                Verify & Sign in
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                className="w-full text-[#6B7280]"
-                onClick={() => setStep('phone')}
-              >
-                ← Change phone number
-              </Button>
-            </form>
-          )}
+          <form onSubmit={form.handleSubmit((d) => loginMutation.mutate(d))} className="space-y-4">
+            <div>
+              <h2 className="text-base font-semibold text-[#111827]">Sign in</h2>
+              <p className="mt-0.5 text-sm text-[#6B7280]">Enter your admin credentials</p>
+            </div>
+            <Input
+              label="Email Address"
+              placeholder="admin@fixhub.in"
+              type="email"
+              error={form.formState.errors.email?.message}
+              {...form.register('email')}
+            />
+            <Input
+              label="Password"
+              placeholder="••••••••"
+              type="password"
+              error={form.formState.errors.password?.message}
+              {...form.register('password')}
+            />
+            <Button
+              type="submit"
+              className="w-full"
+              loading={loginMutation.isPending}
+            >
+              Sign in
+            </Button>
+          </form>
         </div>
 
         <p className="mt-6 text-center text-xs text-[#9CA3AF]">
-          FixHub Admin Panel · Restricted access · Kolathur Pilot
+          FixHub Admin Panel · Restricted access
         </p>
       </div>
     </div>

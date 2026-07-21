@@ -13,7 +13,7 @@ export function useTechnicians(params?: TechnicianQueryParams) {
         endpoints.admin.technicians,
         { params },
       );
-      return data;
+      return data.data;
     },
   });
 }
