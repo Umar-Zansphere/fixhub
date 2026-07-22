@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 import 'app_radius.dart';
 import 'app_spacing.dart';
@@ -15,7 +16,6 @@ class AppTheme {
   static ThemeData get lightTheme => ThemeData(
         useMaterial3: true,
         brightness: Brightness.light,
-        fontFamily: AppTypography.fontFamily,
         scaffoldBackgroundColor: AppColors.background,
 
         // ── Color Scheme ────────────────────────────────────────
@@ -33,20 +33,19 @@ class AppTheme {
         ),
 
         // ── App Bar ─────────────────────────────────────────────
-        appBarTheme: const AppBarTheme(
+        appBarTheme: AppBarTheme(
           centerTitle: false,
           elevation: 0,
           scrolledUnderElevation: 0,
           backgroundColor: AppColors.background,
           foregroundColor: AppColors.textPrimary,
           surfaceTintColor: Colors.transparent,
-          systemOverlayStyle: SystemUiOverlayStyle(
+          systemOverlayStyle: const SystemUiOverlayStyle(
             statusBarColor: Colors.transparent,
             statusBarIconBrightness: Brightness.dark,
             statusBarBrightness: Brightness.light,
           ),
-          titleTextStyle: TextStyle(
-            fontFamily: AppTypography.fontFamily,
+          titleTextStyle: GoogleFonts.inter(
             fontSize: 18,
             fontWeight: FontWeight.w600,
             color: AppColors.textPrimary,
@@ -69,8 +68,7 @@ class AppTheme {
             shape: RoundedRectangleBorder(
               borderRadius: AppRadius.buttonRadius,
             ),
-            textStyle: const TextStyle(
-              fontFamily: AppTypography.fontFamily,
+            textStyle: GoogleFonts.inter(
               fontSize: 16,
               fontWeight: FontWeight.w600,
             ),
@@ -91,8 +89,7 @@ class AppTheme {
             shape: RoundedRectangleBorder(
               borderRadius: AppRadius.buttonRadius,
             ),
-            textStyle: const TextStyle(
-              fontFamily: AppTypography.fontFamily,
+            textStyle: GoogleFonts.inter(
               fontSize: 16,
               fontWeight: FontWeight.w600,
             ),
@@ -103,8 +100,7 @@ class AppTheme {
         textButtonTheme: TextButtonThemeData(
           style: TextButton.styleFrom(
             foregroundColor: AppColors.textPrimary,
-            textStyle: const TextStyle(
-              fontFamily: AppTypography.fontFamily,
+            textStyle: GoogleFonts.inter(
               fontSize: 16,
               fontWeight: FontWeight.w600,
             ),
@@ -142,20 +138,17 @@ class AppTheme {
             borderRadius: AppRadius.inputRadius,
             borderSide: const BorderSide(color: AppColors.error, width: 1.5),
           ),
-          hintStyle: const TextStyle(
-            fontFamily: AppTypography.fontFamily,
+          hintStyle: GoogleFonts.inter(
             fontSize: 16,
             fontWeight: FontWeight.normal,
             color: AppColors.textDisabled,
           ),
-          labelStyle: const TextStyle(
-            fontFamily: AppTypography.fontFamily,
+          labelStyle: GoogleFonts.inter(
             fontSize: 14,
             fontWeight: FontWeight.w500,
             color: AppColors.textSecondary,
           ),
-          errorStyle: const TextStyle(
-            fontFamily: AppTypography.fontFamily,
+          errorStyle: GoogleFonts.inter(
             fontSize: 12,
             color: AppColors.error,
           ),
@@ -194,8 +187,7 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: AppRadius.dialogRadius,
           ),
-          titleTextStyle: const TextStyle(
-            fontFamily: AppTypography.fontFamily,
+          titleTextStyle: GoogleFonts.inter(
             fontSize: 18,
             fontWeight: FontWeight.w600,
             color: AppColors.textPrimary,
@@ -224,15 +216,13 @@ class AppTheme {
           }),
           labelTextStyle: WidgetStateProperty.resolveWith((states) {
             if (states.contains(WidgetState.selected)) {
-              return const TextStyle(
-                fontFamily: AppTypography.fontFamily,
+              return GoogleFonts.inter(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
                 color: AppColors.textPrimary,
               );
             }
-            return const TextStyle(
-              fontFamily: AppTypography.fontFamily,
+            return GoogleFonts.inter(
               fontSize: 12,
               fontWeight: FontWeight.normal,
               color: AppColors.textDisabled,
@@ -243,8 +233,7 @@ class AppTheme {
         // ── Snack Bar ───────────────────────────────────────────
         snackBarTheme: SnackBarThemeData(
           backgroundColor: AppColors.textPrimary,
-          contentTextStyle: const TextStyle(
-            fontFamily: AppTypography.fontFamily,
+          contentTextStyle: GoogleFonts.inter(
             fontSize: 14,
             color: AppColors.textLight,
           ),
@@ -268,8 +257,7 @@ class AppTheme {
             borderRadius: BorderRadius.circular(AppRadius.chip),
           ),
           side: BorderSide.none,
-          labelStyle: const TextStyle(
-            fontFamily: AppTypography.fontFamily,
+          labelStyle: GoogleFonts.inter(
             fontSize: 14,
             fontWeight: FontWeight.w500,
           ),

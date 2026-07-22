@@ -52,7 +52,13 @@ class BookingRemoteDataSource {
   }
 
   Future<Map<String, dynamic>> cancelBooking(String id, String reason) async {
-    final response = await _dio.post(ApiEndpoints.cancelBooking(id), data: {'cancelReason': reason});
+    final response = await _dio.patch(
+      ApiEndpoints.bookingStatus(id), 
+      data: {
+        'status': 'CANCELLED',
+        'cancelReason': reason,
+      }
+    );
     return _extractData(response.data);
   }
 
@@ -100,18 +106,17 @@ class BookingRemoteDataSource {
         'date': date,
       },
     );
-    final data = _extractData(response.data);
-    // The backend returns an array of strings in `data` or directly.
-    if (data.containsKey('data') && data['data'] is List) {
+    
+    final data = response.data;
+    
+    if (data is Map && data.containsKey('data') && data['data'] is List) {
       return (data['data'] as List).map((e) => e.toString()).toList();
     }
-    // If it's a direct list returned
-    if (response.data is List) {
-      return (response.data as List).map((e) => e.toString()).toList();
+    
+    if (data is List) {
+      return data.map((e) => e.toString()).toList();
     }
-    if (response.data is Map && response.data.containsKey('data') && response.data['data'] is List) {
-      return (response.data['data'] as List).map((e) => e.toString()).toList();
-    }
+    
     return [];
   }
 

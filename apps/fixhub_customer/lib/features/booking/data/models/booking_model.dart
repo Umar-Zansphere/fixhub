@@ -18,10 +18,8 @@ class BookingModel {
     required this.scheduledDate,
     required this.scheduledSlot,
     this.description,
-    @JsonKey(fromJson: _parseDouble)
     required this.totalAmount,
     this.notes,
-    @JsonKey(fromJson: _parseNullableDouble)
     this.revisedAmount,
     this.priceRevisionNote,
     this.completedAt,
@@ -34,6 +32,7 @@ class BookingModel {
     this.subService,
     this.technician,
     this.review,
+    this.payment,
     this.timeline = const [],
   });
 
@@ -47,8 +46,10 @@ class BookingModel {
   final DateTime scheduledDate;
   final String scheduledSlot;
   final String? description;
+  @JsonKey(fromJson: _parseDouble)
   final double totalAmount;
   final String? notes;
+  @JsonKey(fromJson: _parseNullableDouble)
   final double? revisedAmount;
   final String? priceRevisionNote;
   final DateTime? completedAt;
@@ -63,6 +64,7 @@ class BookingModel {
   final Map<String, dynamic>? subService;
   final Map<String, dynamic>? technician;
   final Map<String, dynamic>? review;
+  final Map<String, dynamic>? payment;
   final List<BookingTimelineModel> timeline;
 
   factory BookingModel.fromJson(Map<String, dynamic> json) =>
@@ -73,8 +75,14 @@ class BookingModel {
   String get formattedTotal => '₹${totalAmount.toStringAsFixed(0)}';
   
   // This helps when payment info is nested or needs to be derived. 
-  // Let's assume payment is handled via related payment object or defaults to PENDING
-  String get paymentStatus => 'PENDING'; 
+  String get paymentStatus {
+    if (payment != null && payment!['status'] != null) {
+      final statusStr = payment!['status'].toString().toUpperCase();
+      if (statusStr == 'CAPTURED') return 'PAID';
+      return statusStr;
+    }
+    return 'PENDING';
+  } 
 
   BookingStatusType get statusType {
     switch (status.toUpperCase()) {

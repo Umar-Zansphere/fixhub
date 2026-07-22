@@ -26,6 +26,8 @@ import '../../features/booking/presentation/screens/booking_summary_screen.dart'
 import '../../features/booking/presentation/screens/payment_screen.dart';
 import '../../features/booking/presentation/screens/booking_success_screen.dart';
 import '../../features/booking/presentation/screens/booking_detail_screen.dart';
+import '../../features/booking/presentation/screens/booking_tracking_screen.dart';
+import '../../features/booking/presentation/screens/booking_progress_screen.dart';
 import 'route_names.dart';
 import 'scaffold_with_nav_bar.dart';
 
@@ -227,7 +229,23 @@ final routerProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
-        path: '/saved-addresses',
+        path: '/booking-tracking/:id',
+        name: 'bookingTracking',
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return BookingTrackingScreen(bookingId: id);
+        },
+      ),
+      GoRoute(
+        path: '/booking-progress/:id',
+        name: 'bookingProgress',
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return BookingProgressScreen(bookingId: id);
+        },
+      ),
+      GoRoute(
+        path: RouteNames.savedAddresses,
         name: 'savedAddresses',
         builder: (context, state) => const SavedAddressesScreen(),
       ),
@@ -237,7 +255,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const AddAddressScreen(),
       ),
       GoRoute(
-        path: '/edit-profile',
+        path: RouteNames.editProfile,
         name: 'editProfile',
         builder: (context, state) => const EditProfileScreen(),
       ),

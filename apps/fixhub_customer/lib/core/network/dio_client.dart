@@ -8,11 +8,14 @@ final dioProvider = Provider<Dio>((ref) {
   final dio = Dio(
     BaseOptions(
       baseUrl: AppConfig.apiBaseUrl,
-      connectTimeout: const Duration(seconds: 5),
-      receiveTimeout: const Duration(seconds: 10),
+      // Production-grade timeouts
+      connectTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 30),
+      sendTimeout: const Duration(seconds: 30),
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
+        'X-Client': 'fixhub-customer/1.0.0',
       },
     ),
   );
@@ -20,10 +23,14 @@ final dioProvider = Provider<Dio>((ref) {
   dio.interceptors.addAll([
     AuthInterceptor(ref),
     ErrorInterceptor(),
-    if (AppConfig.apiBaseUrl.contains('localhost')) LogInterceptor(
-      requestBody: true,
-      responseBody: true,
-    ),
+    // Debug logging — only in non-production
+    if (AppConfig.isDevelopment)
+      LogInterceptor(
+        requestBody: true,
+        responseBody: true,
+        requestHeader: false,
+        responseHeader: false,
+      ),
   ]);
 
   return dio;

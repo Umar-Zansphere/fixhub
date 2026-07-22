@@ -14,9 +14,7 @@ class AddressModel {
     required this.city,
     required this.state,
     required this.pincode,
-    @JsonKey(fromJson: _parseDouble)
     this.latitude,
-    @JsonKey(fromJson: _parseDouble)
     this.longitude,
     this.isDefault = false,
   });
@@ -30,7 +28,9 @@ class AddressModel {
   final String city;
   final String state;
   final String pincode;
+  @JsonKey(fromJson: _parseDouble)
   final double? latitude;
+  @JsonKey(fromJson: _parseDouble)
   final double? longitude;
   final bool isDefault;
 

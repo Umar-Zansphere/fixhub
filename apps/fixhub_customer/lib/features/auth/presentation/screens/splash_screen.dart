@@ -8,7 +8,7 @@ import '../../../../core/router/route_names.dart';
 import '../providers/auth_provider.dart';
 
 /// Splash screen — checks auth state and navigates accordingly.
-/// Shows the FixHub logo with a subtle fade animation.
+/// Shows the FixHub logo with a premium fade + scale animation.
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
@@ -21,6 +21,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   late final AnimationController _controller;
   late final Animation<double> _fadeAnimation;
   late final Animation<double> _scaleAnimation;
+  late final Animation<double> _taglineAnimation;
   Timer? _safetyTimer;
   bool _hasNavigated = false;
 
@@ -29,22 +30,32 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1200),
+      duration: const Duration(milliseconds: 1400),
     );
 
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+      CurvedAnimation(
+          parent: _controller,
+          curve: const Interval(0.0, 0.6, curve: Curves.easeOut)),
     );
 
-    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
+    _scaleAnimation = Tween<double>(begin: 0.75, end: 1.0).animate(
+      CurvedAnimation(
+          parent: _controller,
+          curve: const Interval(0.0, 0.6, curve: Curves.easeOutBack)),
+    );
+
+    _taglineAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+          parent: _controller,
+          curve: const Interval(0.5, 1.0, curve: Curves.easeOut)),
     );
 
     _controller.forward();
     _checkAuth();
 
-    // Safety timeout — if auth check hangs, navigate to welcome after 5s
-    _safetyTimer = Timer(const Duration(seconds: 5), () {
+    // Safety timeout — if auth check hangs, navigate to welcome after 6s
+    _safetyTimer = Timer(const Duration(seconds: 6), () {
       _navigateTo(RouteNames.welcome);
     });
   }
@@ -52,9 +63,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   Future<void> _checkAuth() async {
     // Give the animation time to play
     await Future.delayed(const Duration(milliseconds: 1800));
-
     if (!mounted) return;
-
     try {
       await ref.read(authProvider.notifier).checkAuthStatus();
     } catch (e) {
@@ -79,7 +88,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    // Listen for auth state changes and navigate
     ref.listen<AuthState>(authProvider, (previous, next) {
       if (next.status == AuthStatus.authenticated) {
         _navigateTo(RouteNames.home);
@@ -95,51 +103,73 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
         child: AnimatedBuilder(
           animation: _controller,
           builder: (context, child) {
-            return Opacity(
-              opacity: _fadeAnimation.value,
-              child: Transform.scale(
-                scale: _scaleAnimation.value,
-                child: child,
-              ),
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Logo mark
+                Opacity(
+                  opacity: _fadeAnimation.value,
+                  child: Transform.scale(
+                    scale: _scaleAnimation.value,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Logo container
+                        Container(
+                          width: 88,
+                          height: 88,
+                          decoration: BoxDecoration(
+                            color: AppColors.buttonPrimary,
+                            borderRadius: BorderRadius.circular(24),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.buttonPrimary.withValues(alpha: 0.2),
+                                blurRadius: 24,
+                                offset: const Offset(0, 8),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.build_rounded,
+                            color: Colors.white,
+                            size: 44,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.lg),
+                        Text(
+                          'FixHub',
+                          style: Theme.of(context)
+                              .textTheme
+                              .displayLarge
+                              ?.copyWith(
+                                color: AppColors.textPrimary,
+                                letterSpacing: -1.5,
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: AppSpacing.sm),
+
+                // Tagline fades in after logo
+                Opacity(
+                  opacity: _taglineAnimation.value,
+                  child: Text(
+                    'Home services, simplified',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppColors.textSecondary,
+                          letterSpacing: 0.2,
+                        ),
+                  ),
+                ),
+              ],
             );
           },
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Logo icon
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: AppColors.buttonPrimary,
-                  borderRadius: BorderRadius.circular(AppSpacing.lg),
-                ),
-                child: const Icon(
-                  Icons.build_rounded,
-                  color: AppColors.buttonPrimaryText,
-                  size: 40,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              Text(
-                'FixHub',
-                style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                      color: AppColors.textPrimary,
-                      letterSpacing: -1,
-                    ),
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                'Home services, simplified',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-              ),
-            ],
-          ),
         ),
       ),
     );
   }
 }
-

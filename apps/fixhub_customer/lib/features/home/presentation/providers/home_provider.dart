@@ -5,7 +5,7 @@ import '../../data/models/sub_service_model.dart';
 import '../../data/repositories/home_repository_impl.dart';
 import '../../domain/repositories/home_repository.dart';
 import '../../../../core/network/dio_client.dart';
-import '../../location/presentation/providers/location_provider.dart';
+import '../../../location/presentation/providers/location_provider.dart';
 
 // ── Repository Provider ───────────────────────────────────────
 

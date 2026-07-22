@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/config/theme/app_colors.dart';
@@ -406,8 +407,44 @@ class BookingDetailScreen extends ConsumerWidget {
                   ),
                 ),
               ],
-              if (booking.statusType == BookingStatusType.completed) ...[
-                const SizedBox(height: AppSpacing.lg),
+              // Action Buttons
+              const SizedBox(height: AppSpacing.lg),
+              
+              if ([BookingStatusType.assigned, BookingStatusType.enRoute, BookingStatusType.arrived].contains(booking.statusType))
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.buttonPrimary,
+                      foregroundColor: AppColors.surface,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
+                    onPressed: () {
+                      context.pushNamed('bookingTracking', pathParameters: {'id': booking.id});
+                    },
+                    child: const Text('Track Technician'),
+                  ),
+                ),
+
+              if (booking.statusType == BookingStatusType.inProgress)
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.buttonPrimary,
+                      foregroundColor: AppColors.surface,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
+                    onPressed: () {
+                      context.pushNamed('bookingProgress', pathParameters: {'id': booking.id});
+                    },
+                    child: const Text('View Job Progress'),
+                  ),
+                ),
+
+              if (booking.statusType == BookingStatusType.completed)
                 if (booking.review != null)
                   Container(
                     width: double.infinity,
@@ -459,7 +496,6 @@ class BookingDetailScreen extends ConsumerWidget {
                       child: const Text('Rate Service'),
                     ),
                   ),
-              ],
               const SizedBox(height: AppSpacing.xxl),
             ],
           );

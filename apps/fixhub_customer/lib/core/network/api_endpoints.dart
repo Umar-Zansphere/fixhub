@@ -25,7 +25,6 @@ class ApiEndpoints {
   static const String availableSlots = '/bookings/available-slots';
   static String bookingConfirm(String id) => '/bookings/$id/confirm';
   static String bookingDetail(String id) => '/bookings/$id';
-  static String cancelBooking(String id) => '/bookings/$id/cancel';
   static String bookingMedia(String id) => '/bookings/$id/media';
   static String bookingMediaBatch(String id) => '/bookings/$id/media/batch';
   static String bookingStatus(String id) => '/bookings/$id/status';
@@ -35,11 +34,13 @@ class ApiEndpoints {
   static String bookingRejectRevision(String id) => '/bookings/$id/reject-revision';
 
   // ── Service Catalog ─────────────────────────────────────────
-  static const String categories = '/categories';
-  static const String services = '/services';
+  // Backend CatalogController is registered under @Controller('catalog')
+  // → Full paths: /catalog/categories, /catalog/services, /catalog/services/:id
+  static const String categories = '/catalog/categories';
+  static const String services = '/catalog/services';
   static String categoryServices(String categoryId) =>
-      '/services?categoryId=$categoryId';
-  static String subServiceDetail(String id) => '/services/$id';
+      '/catalog/services?categoryId=$categoryId';
+  static String subServiceDetail(String id) => '/catalog/services/$id';
 
   // ── Payments ────────────────────────────────────────────────
   static String createOrder(String bookingId) =>

@@ -645,6 +645,7 @@ export class BookingRepository {
       address: true,
       timeline: { orderBy: { createdAt: 'desc' } },
       media: true,
+      payment: true,
       review: true,
     };
   }
