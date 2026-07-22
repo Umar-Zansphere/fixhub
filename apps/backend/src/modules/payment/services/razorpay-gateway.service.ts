@@ -34,6 +34,14 @@ export class RazorpayGatewayService {
     return this.request(`payments/${paymentId}`, 'GET');
   }
 
+  async fetchOrder(orderId: string) {
+    return this.request(`orders/${orderId}`, 'GET');
+  }
+
+  async fetchPaymentsByOrder(orderId: string) {
+    return this.request(`orders/${orderId}/payments`, 'GET');
+  }
+
   async capturePayment(paymentId: string, amountInPaise: number, currency: string) {
     return this.request(`payments/${paymentId}/capture`, 'POST', {
       amount: amountInPaise,

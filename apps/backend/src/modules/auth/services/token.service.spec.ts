@@ -19,6 +19,7 @@ describe('TokenService', () => {
     phone: '+919876543210',
     name: null,
     email: null,
+    password: null,
     role: Role.CUSTOMER,
     isActive: true,
     deletedAt: null,

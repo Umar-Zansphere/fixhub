@@ -1,12 +1,20 @@
 import { ErrorCodes } from '@fixhub/shared';
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 
 import { UpdateAvailabilityDto, UpdateLocationDto, UpdateProfileDto } from '../dto';
 import { TechnicianRepository } from '../repositories/technician.repository';
+import { TrackingGateway } from '../../tracking/tracking.gateway';
+import { PrismaService } from '../../../common/database/prisma.service';
 
 @Injectable()
 export class TechnicianService {
-  constructor(private readonly technicianRepository: TechnicianRepository) {}
+  private readonly logger = new Logger(TechnicianService.name);
+
+  constructor(
+    private readonly technicianRepository: TechnicianRepository,
+    private readonly prisma: PrismaService,
+    @Optional() private readonly trackingGateway: TrackingGateway,
+  ) {}
 
   async getProfile(userId: string) {
     const technician = await this.technicianRepository.findByUserId(userId);
@@ -59,7 +67,21 @@ export class TechnicianService {
 
   async updateLocation(userId: string, dto: UpdateLocationDto) {
     await this.resolveTechnicianId(userId);
-    return this.technicianRepository.updateLocation(userId, dto.latitude, dto.longitude);
+    const updated = await this.technicianRepository.updateLocation(userId, dto.latitude, dto.longitude);
+
+    // Broadcast to any customer currently watching this technician's active booking
+    if (this.trackingGateway) {
+      const activeBookingId = await this.findActiveBookingId(userId);
+      if (activeBookingId) {
+        this.trackingGateway.broadcastLocationUpdate(activeBookingId, {
+          latitude: dto.latitude,
+          longitude: dto.longitude,
+          lastLocationAt: new Date(),
+        });
+      }
+    }
+
+    return updated;
   }
 
   /**
@@ -75,5 +97,23 @@ export class TechnicianService {
       });
     }
     return technician.id;
+  }
+
+  // ─── Private helpers ─────────────────────────────────────────────────────
+
+  /**
+   * Finds the booking ID of the technician's current active job (EN_ROUTE or ARRIVED).
+   * Used to know which booking room to broadcast location updates to.
+   */
+  private async findActiveBookingId(userId: string): Promise<string | null> {
+    const booking = await this.prisma.booking.findFirst({
+      where: {
+        technician: { userId },
+        status: { in: ['EN_ROUTE', 'ARRIVED'] },
+      },
+      select: { id: true },
+      orderBy: { updatedAt: 'desc' },
+    });
+    return booking?.id ?? null;
   }
 }

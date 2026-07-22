@@ -48,6 +48,21 @@ export class PaymentController {
   }
 
   @ApiBearerAuth()
+  @Roles(Role.CUSTOMER)
+  @Post('revision-order/:bookingId')
+  @ApiOperation({
+    summary: 'Create a Razorpay order for the price-revision delta (customer must pay the difference)',
+  })
+  @ApiParam({ name: 'bookingId', description: 'Booking id' })
+  @ApiResponse({ status: 201, description: 'Revision order created or no payment required' })
+  async createRevisionOrder(
+    @Param('bookingId') bookingId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.paymentService.createRevisionOrder(bookingId, user.userId);
+  }
+
+  @ApiBearerAuth()
   @Get('history')
   @ApiOperation({ summary: 'Get payment history for current customer' })
   async history(@CurrentUser() user: AuthenticatedUser, @Query() query: PaymentHistoryQueryDto) {

@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import {
   BookingStatus,
+  NotificationType,
   PaymentMethod,
   PaymentStatus,
   PaymentTransactionType,
@@ -20,6 +21,8 @@ import { Queue } from 'bullmq';
 
 import { QUEUE_NAMES } from '../../../common/queue/queue.constants';
 import { RedisService } from '../../../common/redis/redis.service';
+import { BookingDispatchService } from '../../booking/services/booking-dispatch.service';
+import { NotificationService } from '../../notification/services/notification.service';
 import {
   CreatePaymentOrderDto,
   PaymentHistoryQueryDto,
@@ -40,6 +43,8 @@ export class PaymentService {
     private readonly paymentRepository: PaymentRepository,
     private readonly razorpayGateway: RazorpayGatewayService,
     private readonly redisService: RedisService,
+    private readonly dispatchService: BookingDispatchService,
+    private readonly notificationService: NotificationService,
     @InjectQueue(QUEUE_NAMES.PAYMENT_WEBHOOK)
     private readonly webhookQueue: Queue,
   ) {}
@@ -178,6 +183,63 @@ export class PaymentService {
     });
 
     return { payment: updated, verified: true };
+  }
+
+  /**
+   * Creates a Razorpay order for the delta amount when a technician's price
+   * revision has been approved and the revised amount exceeds the original.
+   *
+   * Returns `{ requiresAdditionalPayment: false }` when no delta is owed
+   * (e.g. revised price ≤ original price).
+   */
+  async createRevisionOrder(bookingId: string, userId: string) {
+    const booking = await this.paymentRepository.findBookingForPayment(bookingId);
+
+    if (!booking) {
+      throw new NotFoundException({
+        message: 'Booking not found',
+        errorCode: ErrorCodes.BOOKING_NOT_FOUND,
+      });
+    }
+
+    if (booking.customer.userId !== userId) {
+      throw new ForbiddenException({
+        message: 'Cannot create revision order for another customer booking',
+        errorCode: ErrorCodes.AUTH_FORBIDDEN,
+      });
+    }
+
+    if (booking.status !== BookingStatus.IN_PROGRESS) {
+      throw new BadRequestException({
+        message: 'Revision order can only be created when the booking is IN_PROGRESS',
+        errorCode: ErrorCodes.BOOKING_INVALID_STATUS,
+      });
+    }
+
+    const revisedAmount = Number((booking as any).revisedAmount);
+    const originalAmount = Number(booking.totalAmount);
+
+    if (!revisedAmount || revisedAmount <= originalAmount) {
+      return { requiresAdditionalPayment: false, message: 'No additional payment required' };
+    }
+
+    const deltaAmount = revisedAmount - originalAmount;
+    const deltaAmountInPaise = this.toPaise(deltaAmount);
+
+    const razorpayOrder = await this.razorpayGateway.createOrder({
+      amountInPaise: deltaAmountInPaise,
+      currency: CURRENCY,
+      receipt: `${(booking as any).bookingNumber}-REV`,
+      notes: { bookingId, type: 'price_revision_delta' },
+    });
+
+    return {
+      requiresAdditionalPayment: true,
+      keyId: this.razorpayGateway.getKeyId(),
+      orderId: razorpayOrder.id,
+      deltaAmount: deltaAmountInPaise,
+      currency: CURRENCY,
+    };
   }
 
   async enqueueWebhook(rawBody: Buffer | string, signature: string | undefined) {
@@ -361,6 +423,11 @@ export class PaymentService {
       });
     });
 
+    // Notify customer of payment failure (fire-and-forget)
+    this.notifyPaymentEvent(payment.bookingId, 'failed').catch((err) =>
+      this.logger.warn(`Payment failure notification error: ${err.message}`),
+    );
+
     return { processed: true };
   }
 
@@ -387,6 +454,46 @@ export class PaymentService {
     return { processed: true };
   }
 
+  async retryPendingPayments() {
+    this.logger.log('Retrying pending payments...');
+    const cutoffTime = new Date(Date.now() - 15 * 60 * 1000); // Stuck for more than 15 mins
+    const stuckPayments = await this.paymentRepository.findStuckPayments(cutoffTime);
+
+    let processedCount = 0;
+
+    for (const payment of stuckPayments) {
+      try {
+        if (!payment.razorpayOrderId) continue;
+
+        const order = await this.razorpayGateway.fetchOrder(payment.razorpayOrderId);
+        
+        if (order.status === 'paid') {
+          // If the order is paid but our DB is PENDING, we likely missed the webhook.
+          // Fetch the payments for this order to capture it.
+          const payments = await this.razorpayGateway.fetchPaymentsByOrder(payment.razorpayOrderId);
+          const successfulPayment = payments.items.find((p: any) => p.status === 'captured' || p.status === 'authorized');
+          
+          if (successfulPayment) {
+            await this.capturePaymentInDb(payment.id, {
+              bookingId: payment.bookingId,
+              razorpayPaymentId: successfulPayment.id,
+              amount: Number(payment.amount),
+              method: this.mapMethod(successfulPayment.method),
+              eventId: successfulPayment.id,
+              gatewayResponse: successfulPayment,
+            });
+            processedCount++;
+            this.logger.log(`Recovered stuck payment ${payment.id} for booking ${payment.bookingId}`);
+          }
+        }
+      } catch (err) {
+        this.logger.error(`Failed to retry payment ${payment.id}: ${err.message}`, err.stack);
+      }
+    }
+
+    return { success: true, count: processedCount };
+  }
+
   private async capturePaymentInDb(
     paymentId: string,
     params: {
@@ -399,8 +506,8 @@ export class PaymentService {
       gatewayResponse: unknown;
     },
   ) {
-    return this.paymentRepository.transaction(async (tx) => {
-      const updated = await this.paymentRepository.markCaptured(tx, paymentId, {
+    const updated = await this.paymentRepository.transaction(async (tx) => {
+      const payment = await this.paymentRepository.markCaptured(tx, paymentId, {
         razorpayPaymentId: params.razorpayPaymentId,
         razorpaySignature: params.razorpaySignature,
         method: params.method,
@@ -416,8 +523,52 @@ export class PaymentService {
         gatewayResponse: this.toJson(params.gatewayResponse),
       });
 
-      return updated;
+      return payment;
     });
+
+    // Auto-dispatch to eligible technicians after successful payment (fire-and-forget)
+    this.dispatchService.dispatch(params.bookingId).catch((err) =>
+      this.logger.error(
+        `Auto-dispatch failed for booking ${params.bookingId}: ${err.message}`,
+        err.stack,
+      ),
+    );
+
+    // Notify customer of successful payment (fire-and-forget)
+    this.notifyPaymentEvent(params.bookingId, 'captured').catch((err) =>
+      this.logger.warn(`Payment success notification error: ${err.message}`),
+    );
+
+    return updated;
+  }
+
+  /**
+   * Sends a push notification to the booking's customer for payment events.
+   */
+  private async notifyPaymentEvent(bookingId: string, event: 'captured' | 'failed'): Promise<void> {
+    const booking = await this.paymentRepository.findBookingForPayment(bookingId);
+    if (!booking) return;
+
+    const customerUserId = booking.customer.userId;
+    const bookingRef = (booking as any).bookingNumber ?? bookingId;
+
+    if (event === 'captured') {
+      await this.notificationService.sendPushNotification({
+        userId: customerUserId,
+        title: 'Payment Confirmed ✅',
+        body: `Payment for booking ${bookingRef} was successful. We are finding a technician for you.`,
+        type: NotificationType.PAYMENT_UPDATE,
+        payload: { bookingId, screen: 'booking_detail' },
+      });
+    } else {
+      await this.notificationService.sendPushNotification({
+        userId: customerUserId,
+        title: 'Payment Failed ❌',
+        body: `Payment for booking ${bookingRef} could not be processed. Please try again.`,
+        type: NotificationType.PAYMENT_UPDATE,
+        payload: { bookingId, screen: 'payment_retry' },
+      });
+    }
   }
 
   private mapMethod(method?: string): PaymentMethod | undefined {

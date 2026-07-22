@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 
 import { StorageModule } from '../../common/storage/storage.module';
 import { BookingModule } from '../booking/booking.module';
+import { TrackingModule } from '../tracking/tracking.module';
 import { TechnicianController } from './controllers/technician.controller';
 import { TechnicianDocumentRepository } from './repositories/technician-document.repository';
 import { TechnicianEarningsRepository } from './repositories/technician-earnings.repository';
@@ -21,7 +22,7 @@ import { TechnicianService } from './services/technician.service';
 import { JobOfferService } from './services/job-offer.service';
 
 @Module({
-  imports: [StorageModule, BookingModule],
+  imports: [StorageModule, BookingModule, TrackingModule],
   controllers: [TechnicianController],
   providers: [
     // Services

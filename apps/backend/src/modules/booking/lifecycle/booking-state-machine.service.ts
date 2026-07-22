@@ -48,7 +48,10 @@ export class BookingStateMachineService {
         this.assignedTechnicianRequired,
         this.technicianOwnsBooking,
       ]),
-      this.define(BookingStatus.ASSIGNED, BookingStatus.CONFIRMED, [Role.ADMIN], []),
+      // TECHNICIAN can reject an assignment — returns booking to CONFIRMED (assignment pool)
+      this.define(BookingStatus.ASSIGNED, BookingStatus.CONFIRMED, [Role.TECHNICIAN, Role.ADMIN], [
+        this.technicianOwnsBooking,
+      ]),
       this.define(BookingStatus.ASSIGNED, BookingStatus.CANCELLED, [Role.CUSTOMER, Role.ADMIN], [
         this.customerOwnsBooking,
         this.cancellationReason,

@@ -19,7 +19,7 @@ export class TechnicianReviewRepository {
         include: {
           customer: {
             include: {
-              user: { select: { id: true, name: true, phone: true } },
+              user: { select: { id: true, name: true } },
             },
           },
           booking: {

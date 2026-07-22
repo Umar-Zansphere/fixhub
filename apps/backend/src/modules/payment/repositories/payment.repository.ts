@@ -164,6 +164,16 @@ export class PaymentRepository {
     });
   }
 
+  findStuckPayments(cutoffTime: Date) {
+    return this.prisma.payment.findMany({
+      where: {
+        status: PaymentStatus.PENDING,
+        createdAt: { lt: cutoffTime },
+        razorpayOrderId: { not: null },
+      },
+    });
+  }
+
   async historyForUser(userId: string, query: PaymentHistoryQueryDto) {
     const where: Prisma.PaymentWhereInput = {
       booking: {

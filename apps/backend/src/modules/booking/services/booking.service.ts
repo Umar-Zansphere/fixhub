@@ -492,8 +492,11 @@ export class BookingService {
     for (const slot of slots) {
       // Check if the slot is in the past
       const [startHour, startMinute] = slot.split('-')[0].split(':').map(Number);
-      const slotTime = new Date(scheduledDate);
-      slotTime.setUTCHours(startHour, startMinute);
+      
+      // The slots are in local time (IST, +05:30)
+      const formattedHour = String(startHour).padStart(2, '0');
+      const formattedMinute = String(startMinute).padStart(2, '0');
+      const slotTime = new Date(`${query.date}T${formattedHour}:${formattedMinute}:00.000+05:30`);
       
       // If it's today and the slot is in the past (adding 1 hour buffer for now), skip
       if (slotTime.getTime() < Date.now() + 60 * 60 * 1000) {

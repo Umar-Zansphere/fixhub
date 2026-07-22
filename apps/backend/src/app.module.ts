@@ -28,6 +28,7 @@ import { PaymentModule } from './modules/payment/payment.module';
 import { ReportingModule } from './modules/reporting/reporting.module';
 import { ServiceAreaModule } from './modules/service-area/service-area.module';
 import { TechnicianModule } from './modules/technician/technician.module';
+import { TrackingModule } from './modules/tracking/tracking.module';
 import { UsersModule } from './modules/users/users.module';
 
 @Module({
@@ -64,6 +65,7 @@ import { UsersModule } from './modules/users/users.module';
     AdminModule,
     ReportingModule,
     JobsModule,
+    TrackingModule,
   ],
   providers: [
     // Global exception filter

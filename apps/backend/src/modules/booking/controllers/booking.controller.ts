@@ -1,7 +1,9 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, ForbiddenException, Get, NotFoundException, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Role } from '@prisma/client';
 
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
+import { PrismaService } from '../../../common/database/prisma.service';
 import { AuthenticatedUser } from '../../../common/interfaces/auth.interface';
 import {
   BookingQueryDto,
@@ -27,6 +29,7 @@ export class BookingController {
     private readonly bookingLifecycleService: BookingLifecycleService,
     private readonly bookingQueryService: BookingQueryService,
     private readonly bookingMediaService: BookingMediaService,
+    private readonly prisma: PrismaService,
   ) {}
 
   @Get()
@@ -54,6 +57,59 @@ export class BookingController {
   @ApiOperation({ summary: 'Get booking details' })
   async getBooking(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.bookingQueryService.getDetailsForActor(user, id);
+  }
+
+  @Get(':id/technician-location')
+  @ApiOperation({
+    summary: 'Get last-known technician location for an active booking (polling fallback for WebSocket)',
+  })
+  @ApiParam({ name: 'id', description: 'Booking id' })
+  async getTechnicianLocation(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id },
+      include: {
+        customer: { select: { userId: true } },
+        technician: {
+          select: {
+            userId: true,
+            latitude: true,
+            longitude: true,
+            lastLocationAt: true,
+            user: { select: { name: true } },
+          },
+        },
+      },
+    });
+
+    if (!booking) {
+      throw new NotFoundException({ message: 'Booking not found' });
+    }
+
+    const isAdmin = user.role === Role.ADMIN;
+    const isCustomer = booking.customer?.userId === user.userId;
+    const isTechnician = booking.technician?.userId === user.userId;
+
+    if (!isAdmin && !isCustomer && !isTechnician) {
+      throw new ForbiddenException({ message: 'Access denied' });
+    }
+
+    if (!booking.technician) {
+      return { hasLocation: false, message: 'No technician assigned yet' };
+    }
+
+    const { latitude, longitude, lastLocationAt, user: techUser } = booking.technician;
+    const isStale = lastLocationAt
+      ? Date.now() - new Date(lastLocationAt).getTime() > 5 * 60 * 1000
+      : true;
+
+    return {
+      hasLocation: latitude != null && longitude != null,
+      latitude,
+      longitude,
+      lastLocationAt,
+      isStale,
+      technicianName: techUser?.name,
+    };
   }
 
   @Post('summary')

@@ -90,14 +90,9 @@ export class TechnicianJobService {
       });
     }
 
-    // Transition back to CONFIRMED — returns to assignment pool
-    return this.bookingLifecycleService.transition(bookingId, {
-      // Use a system-level actor for the rejection → CONFIRMED transition
-      // since ASSIGNED→CONFIRMED is an ADMIN-only transition in the state machine
-      userId: user.userId,
-      phone: user.phone,
-      role: 'ADMIN',
-    }, {
+    // Transition back to CONFIRMED — returns to assignment pool.
+    // The state machine now legitimately allows TECHNICIAN on ASSIGNED→CONFIRMED.
+    return this.bookingLifecycleService.transition(bookingId, user, {
       status: BookingStatus.CONFIRMED,
       note: `Technician rejected: ${dto.reason}`,
     });

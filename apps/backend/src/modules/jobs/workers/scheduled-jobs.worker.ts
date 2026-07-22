@@ -5,12 +5,18 @@ import { Job } from 'bullmq';
 
 import { PrismaService } from '../../../common/database/prisma.service';
 import { QUEUE_NAMES } from '../../../common/queue/queue.constants';
+import { BookingDispatchService } from '../../booking/services/booking-dispatch.service';
+import { PaymentService } from '../../payment/services/payment.service';
 
 @Processor(QUEUE_NAMES.SCHEDULED_JOBS)
 export class ScheduledJobsWorker extends WorkerHost {
   private readonly logger = new Logger(ScheduledJobsWorker.name);
 
-  constructor(private readonly prisma: PrismaService) {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly bookingDispatchService: BookingDispatchService,
+    private readonly paymentService: PaymentService,
+  ) {
     super();
   }
 
@@ -58,11 +64,12 @@ export class ScheduledJobsWorker extends WorkerHost {
     const expiredBookings = await this.prisma.booking.updateMany({
       where: {
         status: BookingStatus.PENDING_PAYMENT,
-        createdAt: { lt: expiryTime },
+        updatedAt: { lt: expiryTime },
       },
       data: {
         status: BookingStatus.CANCELLED,
         cancelReason: 'Automatically expired due to inactivity',
+        cancelledBy: 'SYSTEM',
       },
     });
 
@@ -88,7 +95,11 @@ export class ScheduledJobsWorker extends WorkerHost {
       data: { status: 'EXPIRED' },
     });
     this.logger.log(`Expired ${expiredCount.count} stale job offers.`);
-    return { success: true, count: expiredCount.count };
+
+    // Check for any orphaned bookings and alert admins
+    const orphanedCount = await this.bookingDispatchService.checkOrphanedBookings();
+
+    return { success: true, count: expiredCount.count, orphanedCount };
   }
 
   private async handleNotificationRetry() {
@@ -99,8 +110,7 @@ export class ScheduledJobsWorker extends WorkerHost {
 
   private async handlePaymentRetry() {
     this.logger.log('Retrying pending/failed payments...');
-    // Fetch stuck payments and retry capturing
-    return { success: true };
+    return this.paymentService.retryPendingPayments();
   }
 
   private async handleAuditCleanup() {

@@ -43,6 +43,12 @@ export class JobsSchedulerService implements OnApplicationBootstrap {
       jobId: 'otp-cleanup-job',
     });
 
+    // Offer Expiry - Every 5 minutes (expire stale job offers past their 15-min TTL)
+    await this.scheduledJobsQueue.add('offer-expiry', {}, {
+      repeat: { pattern: '*/5 * * * *' },
+      jobId: 'offer-expiry-job',
+    });
+
     // Notification Retry - Every 5 minutes
     await this.scheduledJobsQueue.add('notification-retry', {}, {
       repeat: { pattern: '*/5 * * * *' },

@@ -298,19 +298,21 @@ export class BookingRepository {
     });
   }
 
-  updateLifecycleStatus(
+  async updateLifecycleStatus(
     tx: PrismaTx,
     id: string,
     dto: UpdateBookingStatusDto,
     actorUserId: string,
+    actorRole?: string,
   ) {
-    return tx.booking.update({
+    const updated = await tx.booking.update({
       where: { id },
       data: {
         status: dto.status,
         ...(dto.status === BookingStatus.CANCELLED && {
           cancelledAt: new Date(),
           cancelReason: dto.cancelReason,
+          cancelledBy: actorRole as any, // Cast to CancellationActor which maps 1:1 with Role
         }),
         ...(dto.status === BookingStatus.COMPLETED && { completedAt: new Date() }),
         ...(dto.status === BookingStatus.FAILED && {
@@ -328,6 +330,15 @@ export class BookingRepository {
         media: true,
       },
     });
+
+    if (dto.status === BookingStatus.COMPLETED && updated.technicianId) {
+      await tx.technician.update({
+        where: { id: updated.technicianId },
+        data: { totalJobs: { increment: 1 } },
+      });
+    }
+
+    return updated;
   }
 
   assignTechnician(
@@ -482,7 +493,6 @@ export class BookingRepository {
         where: { id: technicianId },
         data: {
           rating: _avg.rating ? Math.round(_avg.rating * 100) / 100 : 0,
-          totalJobs: _count.rating,
         },
       });
 
