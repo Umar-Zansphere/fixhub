@@ -18,12 +18,12 @@ let failedQueue: Array<{
   reject: (reason?: unknown) => void;
 }> = [];
 
-const processQueue = (error: Error | null) => {
+const processQueue = (error: Error | null, token: string | null = null) => {
   failedQueue.forEach((prom) => {
     if (error) {
       prom.reject(error);
     } else {
-      prom.resolve();
+      prom.resolve(token);
     }
   });
   failedQueue = [];
@@ -37,7 +37,7 @@ apiClient.interceptors.response.use(
 
     if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
       // If the refresh itself fails, log out
-      if (originalRequest.url?.includes(endpoints.auth.refresh)) {
+      if (originalRequest.url?.includes(endpoints.auth.refresh) || (originalRequest as any)._isRefreshRequest) {
         if (typeof window !== 'undefined') {
           window.location.href = '/login';
         }
@@ -49,7 +49,12 @@ apiClient.interceptors.response.use(
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         })
-          .then(() => apiClient(originalRequest))
+          .then((token) => {
+            if (token) {
+              originalRequest.headers['Authorization'] = `Bearer ${token}`;
+            }
+            return apiClient(originalRequest);
+          })
           .catch((err) => Promise.reject(err));
       }
 
@@ -57,14 +62,23 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        // Use standard axios to avoid interceptor loop
-        await axios.post(
-          `${API_BASE_URL}${endpoints.auth.refresh}`,
-          {},
-          { withCredentials: true }
-        );
+        // Use apiClient but mark it so it bypasses the 401 interceptor loop
+        const refreshResponse = await apiClient.post(endpoints.auth.refresh, {}, {
+          _isRefreshRequest: true
+        } as any);
+        
+        const newAccessToken = refreshResponse.data?.accessToken;
+        if (newAccessToken) {
+          apiClient.defaults.headers.common['Authorization'] = `Bearer ${newAccessToken}`;
+          originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
+        }
+        
         isRefreshing = false;
-        processQueue(null);
+        
+        // Also update the queue with the new token
+        failedQueue.forEach((prom) => prom.resolve(newAccessToken));
+        failedQueue = [];
+        
         return apiClient(originalRequest);
       } catch (refreshError) {
         isRefreshing = false;

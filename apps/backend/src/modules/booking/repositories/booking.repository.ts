@@ -407,6 +407,14 @@ export class BookingRepository {
     });
   }
 
+  async updateNotes(bookingId: string, notes: string | undefined, updatedBy: string) {
+    return this.prisma.booking.update({
+      where: { id: bookingId },
+      data: { notes, updatedBy },
+      include: this.bookingInclude(),
+    });
+  }
+
   updateDraftAndConfirm(
     tx: PrismaTx,
     bookingId: string,

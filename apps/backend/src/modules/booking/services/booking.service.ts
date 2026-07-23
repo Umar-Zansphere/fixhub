@@ -11,6 +11,7 @@ import { BookingStatus, Role } from '@prisma/client';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 import { AuthenticatedUser } from '../../../common/interfaces/auth.interface';
 import { StorageService } from '../../../common/storage/storage.service';
+import { PrismaService } from '../../../common/database/prisma.service';
 import { BookingSummaryDto, ConfirmBookingDto, CreateBookingDto, CreateBookingMediaDto, CreateReviewDto, ProposeRevisionDto } from '../dto';
 import { BookingRepository } from '../repositories/booking.repository';
 import { BookingLockService } from './booking-lock.service';
@@ -25,6 +26,7 @@ export class BookingService {
     private readonly bookingLockService: BookingLockService,
     private readonly storageService: StorageService,
     private readonly bookingQueryCacheService: BookingQueryCacheService,
+    private readonly prisma: PrismaService,
   ) {}
 
   async listByUser(userId: string, role: string, pagination: PaginationDto) {
@@ -282,7 +284,21 @@ export class BookingService {
     });
 
     await this.bookingQueryCacheService.invalidate();
+    return updated;
+  }
 
+  async updateNotes(bookingId: string, notes: string | undefined, actorUserId: string) {
+    const booking = await this.bookingRepository.findById(bookingId);
+    if (!booking) {
+      throw new NotFoundException({
+        message: 'Booking not found',
+        errorCode: ErrorCodes.BOOKING_NOT_FOUND,
+      });
+    }
+
+    const updated = await this.bookingRepository.updateNotes(bookingId, notes, actorUserId);
+
+    await this.bookingQueryCacheService.invalidate();
     return updated;
   }
 

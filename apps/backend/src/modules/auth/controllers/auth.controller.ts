@@ -8,6 +8,7 @@ import {
   Post,
   Req,
   Res,
+  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import { Response } from 'express';
@@ -92,7 +93,9 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
   async adminLogin(@Body() dto: AdminLoginDto, @Res({ passthrough: true }) res: Response) {
     const result = await this.authService.adminLogin(dto);
-    
+    // Clear any ghost cookies from old path structure (crucial for fixing replay attacks)
+    res.clearCookie('refreshToken', { path: '/api/v1/auth/refresh' });
+
     // Set HttpOnly cookies for web admin
     res.cookie('accessToken', result.accessToken, {
       httpOnly: true,
@@ -106,7 +109,7 @@ export class AuthController {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      path: '/api/v1/auth/refresh', // Or '/' if we want it sent everywhere
+      path: '/',
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
@@ -124,8 +127,40 @@ export class AuthController {
   })
   @ApiResponse({ status: 200, description: 'New token pair issued' })
   @ApiResponse({ status: 401, description: 'Invalid, expired, or reused refresh token' })
-  async refreshTokens(@Body() dto: RefreshTokenDto) {
-    return this.authService.refreshTokens(dto.refreshToken);
+  async refreshTokens(
+    @Body() dto: RefreshTokenDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response
+  ) {
+    let token = dto.refreshToken;
+    if (!token && req.cookies?.refreshToken) {
+      token = req.cookies.refreshToken;
+    }
+
+    if (!token) {
+      throw new UnauthorizedException('Refresh token is required');
+    }
+
+    const result = await this.authService.refreshTokens(token);
+    
+    // Set HttpOnly cookies for web admin
+    res.cookie('accessToken', result.accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 15 * 60 * 1000, // 15 minutes
+    });
+
+    res.cookie('refreshToken', result.refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+
+    return result;
   }
 
   // ── POST /auth/logout ────────────────────────────────────
@@ -147,7 +182,7 @@ export class AuthController {
   ) {
     // Clear cookies for web admin
     res.clearCookie('accessToken', { path: '/' });
-    res.clearCookie('refreshToken', { path: '/api/v1/auth/refresh' });
+    res.clearCookie('refreshToken', { path: '/' });
 
     // Extract the raw JWT from "Bearer <token>" or from cookie
     let accessToken = authHeader?.replace('Bearer ', '');

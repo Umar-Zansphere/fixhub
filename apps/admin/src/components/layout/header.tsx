@@ -76,8 +76,9 @@ export function Header({ onCommandPalette }: HeaderProps) {
       <div className="flex items-center gap-2">
         {/* Search trigger */}
         <button
+          disabled
           onClick={onCommandPalette}
-          className="flex items-center gap-2 rounded-lg border border-[#E5E7EB] bg-[#F8F8F7] px-3 py-1.5 text-sm text-[#9CA3AF] transition-colors hover:bg-[#F3F4F6]"
+          className="flex items-center gap-2 rounded-lg border border-[#E5E7EB] bg-[#F8F8F7] px-3 py-1.5 text-sm text-[#9CA3AF] opacity-50 pointer-events-none cursor-not-allowed"
         >
           <Search className="h-3.5 w-3.5" />
           <span className="hidden sm:inline">Search...</span>
@@ -87,9 +88,8 @@ export function Header({ onCommandPalette }: HeaderProps) {
         </button>
 
         {/* Notifications */}
-        <button className="relative flex h-8 w-8 items-center justify-center rounded-lg text-[#6B7280] hover:bg-[#F3F4F6] hover:text-[#111827] transition-colors">
+        <button disabled className="relative flex h-8 w-8 items-center justify-center rounded-lg text-[#6B7280] opacity-50 pointer-events-none cursor-not-allowed">
           <Bell className="h-4 w-4" />
-          <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-[#EF4444]" />
         </button>
 
         {/* Divider */}

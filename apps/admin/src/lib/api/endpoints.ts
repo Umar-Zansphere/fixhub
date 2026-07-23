@@ -33,6 +33,8 @@ export const endpoints = {
     history: '/admin/bookings/history',
     detail: (id: string) => `/admin/bookings/${id}`,
     assign: (id: string) => `/admin/bookings/${id}/assign`,
+    notes: (id: string) => `/admin/bookings/${id}/notes`,
+    cancel: (id: string) => `/admin/bookings/${id}/cancel`,
   },
 
   // Catalog (admin endpoints for listing, creating, etc.)

@@ -5,3 +5,4 @@ export * from './create-review.dto';
 export * from './price-revision.dto';
 export * from './update-booking-status.dto';
 export * from './assign-technician.dto';
+export * from './update-notes.dto';

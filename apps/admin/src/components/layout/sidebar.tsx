@@ -29,6 +29,7 @@ interface NavItem {
   label: string;
   href: string;
   icon: React.ElementType;
+  disabled?: boolean;
 }
 
 interface NavGroup {
@@ -68,9 +69,9 @@ const navGroups: NavGroup[] = [
   {
     title: 'System',
     items: [
-      { label: 'Notifications', href: '/notifications', icon: Bell },
-      { label: 'Settings', href: '/settings', icon: Settings },
-      { label: 'Audit Logs', href: '/audit-logs', icon: Shield },
+      { label: 'Notifications', href: '/notifications', icon: Bell, disabled: true },
+      { label: 'Settings', href: '/settings', icon: Settings, disabled: true },
+      { label: 'Audit Logs', href: '/audit-logs', icon: Shield, disabled: true },
     ],
   },
 ];
@@ -153,16 +154,23 @@ export function Sidebar() {
               return (
                 <Link
                   key={item.href}
-                  href={item.href}
+                  href={item.disabled ? '#' : item.href}
+                  tabIndex={item.disabled ? -1 : 0}
                   title={collapsed ? item.label : undefined}
                   className={cn(
                     'nav-item',
                     active && 'active',
                     collapsed && 'justify-center px-0',
+                    item.disabled && 'opacity-50 pointer-events-none cursor-not-allowed'
                   )}
                 >
                   <Icon className={cn('h-4 w-4 flex-shrink-0', active ? 'text-[#1F2937]' : 'text-[#9CA3AF]')} />
                   {!collapsed && <span>{item.label}</span>}
+                  {item.disabled && !collapsed && (
+                    <span className="ml-auto text-[9px] font-bold uppercase tracking-wider text-[#9CA3AF] bg-[#F3F4F6] px-1.5 py-0.5 rounded">
+                      Soon
+                    </span>
+                  )}
                 </Link>
               );
             })}

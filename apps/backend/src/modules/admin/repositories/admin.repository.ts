@@ -9,16 +9,123 @@ export class AdminRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async getDashboardStats() {
-    const [totalBookings, totalCustomers, totalTechnicians, activeBookings] = await Promise.all([
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29);
+    thirtyDaysAgo.setHours(0, 0, 0, 0);
+
+    const firstDayOfMonth = new Date();
+    firstDayOfMonth.setDate(1);
+    firstDayOfMonth.setHours(0, 0, 0, 0);
+
+    const [
+      totalBookings,
+      totalCustomers,
+      totalTechnicians,
+      activeBookings,
+      recentBookings,
+      revenueRaw,
+      categoryRaw,
+      timelineRaw,
+    ] = await Promise.all([
       this.prisma.booking.count(),
       this.prisma.customer.count(),
       this.prisma.technician.count(),
       this.prisma.booking.count({
         where: { status: { in: ['PENDING_PAYMENT', 'CONFIRMED', 'ASSIGNED', 'IN_PROGRESS'] } },
       }),
+      this.prisma.booking.findMany({
+        take: 5,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          customer: { include: { user: { select: { id: true, name: true, phone: true } } } },
+          technician: { include: { user: { select: { id: true, name: true, phone: true } } } },
+          subService: {
+            select: {
+              id: true,
+              name: true,
+              basePrice: true,
+              estimatedDurationMins: true,
+              category: { select: { id: true, name: true, slug: true } },
+            },
+          },
+          address: { select: { id: true, label: true, city: true, state: true, pincode: true } },
+        },
+      }),
+      this.prisma.booking.findMany({
+        where: { createdAt: { gte: thirtyDaysAgo } },
+        select: { createdAt: true, totalAmount: true },
+      }),
+      this.prisma.booking.findMany({
+        where: { createdAt: { gte: firstDayOfMonth } },
+        select: { subService: { select: { category: { select: { name: true } } } } },
+      }),
+      this.prisma.bookingTimeline.findMany({
+        take: 5,
+        orderBy: { createdAt: 'desc' },
+        include: { booking: { select: { bookingNumber: true, subService: { select: { name: true } } } } },
+      }),
     ]);
 
-    return { totalBookings, totalCustomers, totalTechnicians, activeBookings };
+    // 1. Process Revenue Data
+    const revenueMap = new Map<string, { revenue: number; bookings: number }>();
+    
+    // Initialize last 30 days
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const key = d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+      revenueMap.set(key, { revenue: 0, bookings: 0 });
+    }
+
+    for (const b of revenueRaw) {
+      const key = b.createdAt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+      if (revenueMap.has(key)) {
+        const current = revenueMap.get(key)!;
+        current.bookings += 1;
+        current.revenue += Number(b.totalAmount || 0);
+      }
+    }
+
+    const revenueData = Array.from(revenueMap.entries()).map(([date, data]) => ({
+      date,
+      revenue: data.revenue,
+      bookings: data.bookings,
+    }));
+
+    // 2. Process Category Data
+    const categoryMap = new Map<string, number>();
+    for (const b of categoryRaw) {
+      const catName = b.subService?.category?.name || 'Unknown';
+      categoryMap.set(catName, (categoryMap.get(catName) || 0) + 1);
+    }
+
+    // Modern color palette for categories
+    const colors = ['#6F7F5F', '#3B82F6', '#F59E0B', '#8B5CF6', '#22C55E', '#EC4899', '#06B6D4'];
+    const categoryData = Array.from(categoryMap.entries())
+      .map(([name, bookings], i) => ({
+        name,
+        bookings,
+        color: colors[i % colors.length],
+      }))
+      .sort((a, b) => b.bookings - a.bookings);
+
+    // 3. Process Recent Activity
+    const recentActivity = timelineRaw.map((t) => ({
+      title: `Booking ${t.status.toLowerCase()}`,
+      description: `${t.booking.bookingNumber} — ${t.booking.subService?.name || 'Service'}`,
+      time: t.createdAt.toISOString(),
+    }));
+
+    return {
+      totalBookings,
+      totalCustomers,
+      totalTechnicians,
+      activeBookings,
+      recentBookings,
+      revenueData,
+      categoryData,
+      recentActivity,
+    };
   }
 
   async listCustomers(query: CustomerQueryDto) {

@@ -25,29 +25,11 @@ import {
 } from 'lucide-react';
 
 import { useDashboard } from '@/lib/api/queries/use-dashboard';
-import { useBookings } from '@/lib/api/queries/use-bookings';
 import { formatCurrency, formatDate, formatRelative, bookingStatusVariant, bookingStatusLabel } from '@/lib/utils';
 import type { BookingStatus, Booking } from '@/lib/types';
 import { Avatar, Badge, Card, CardContent, CardHeader, CardTitle, Skeleton, StatCard } from '@/components/ui';
 
-// ─── Revenue chart data (mock for chart visualization) ────
-const revenueData = Array.from({ length: 30 }, (_, i) => {
-  const date = new Date();
-  date.setDate(date.getDate() - (29 - i));
-  return {
-    date: date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }),
-    revenue: Math.floor(Math.random() * 15000 + 5000),
-    bookings: Math.floor(Math.random() * 40 + 10),
-  };
-});
-
-const categoryData = [
-  { name: 'Electrical', bookings: 142, color: '#6F7F5F' },
-  { name: 'AC Service', bookings: 98, color: '#3B82F6' },
-  { name: 'Plumbing', bookings: 67, color: '#F59E0B' },
-  { name: 'Carpentry', bookings: 45, color: '#8B5CF6' },
-  { name: 'Cleaning', bookings: 38, color: '#22C55E' },
-];
+// Charts use data from stats if available, otherwise empty states
 
 // ─── Recent Bookings row ───────────────────────────────────
 function BookingRow({ booking }: { booking: Booking }) {
@@ -101,14 +83,9 @@ function ActivityItem({ icon, title, description, time }: {
 
 export default function DashboardPage() {
   const { data: stats, isLoading: statsLoading } = useDashboard();
-  const { data: bookingsData, isLoading: bookingsLoading } = useBookings({
-    page: 1,
-    limit: 5,
-    sortOrder: 'desc',
-    sortBy: 'createdAt',
-  });
 
-  const recentBookings = bookingsData?.items ?? [];
+  // @ts-ignore
+  const recentBookings = stats?.recentBookings ?? [];
 
   return (
     <div className="space-y-6 fade-in">
@@ -134,7 +111,6 @@ export default function DashboardPage() {
           title="Active Bookings"
           value={stats?.activeBookings?.toLocaleString() ?? '—'}
           icon={<Activity className="h-4 w-4" />}
-          trend={{ value: 4.2 }}
           subtitle="right now"
           loading={statsLoading}
         />
@@ -142,7 +118,6 @@ export default function DashboardPage() {
           title="Total Customers"
           value={stats?.totalCustomers?.toLocaleString() ?? '—'}
           icon={<Users className="h-4 w-4" />}
-          trend={{ value: 8.1 }}
           subtitle="registered"
           loading={statsLoading}
         />
@@ -150,7 +125,6 @@ export default function DashboardPage() {
           title="Total Technicians"
           value={stats?.totalTechnicians?.toLocaleString() ?? '—'}
           icon={<Wrench className="h-4 w-4" />}
-          trend={{ value: 2.3 }}
           subtitle="on platform"
           loading={statsLoading}
         />
@@ -168,47 +142,55 @@ export default function DashboardPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={220}>
-              <AreaChart data={revenueData} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
-                <defs>
-                  <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#6F7F5F" stopOpacity={0.15} />
-                    <stop offset="95%" stopColor="#6F7F5F" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
-                <XAxis
-                  dataKey="date"
-                  tick={{ fontSize: 10, fill: '#9CA3AF' }}
-                  tickLine={false}
-                  axisLine={false}
-                  interval={4}
-                />
-                <YAxis
-                  tick={{ fontSize: 10, fill: '#9CA3AF' }}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`}
-                />
-                <Tooltip
-                  contentStyle={{
-                    borderRadius: '8px',
-                    border: '1px solid #E5E7EB',
-                    fontSize: '12px',
-                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.07)',
-                  }}
-                  formatter={(value: any) => [formatCurrency(Number(value)), 'Revenue']}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="revenue"
-                  stroke="#6F7F5F"
-                  strokeWidth={2}
-                  fill="url(#revenueGrad)"
-                  dot={false}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+            {/* @ts-ignore */}
+            {stats?.revenueData?.length > 0 ? (
+              <ResponsiveContainer width="100%" height={220}>
+                {/* @ts-ignore */}
+                <AreaChart data={stats.revenueData} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
+                  <defs>
+                    <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#6F7F5F" stopOpacity={0.15} />
+                      <stop offset="95%" stopColor="#6F7F5F" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 10, fill: '#9CA3AF' }}
+                    tickLine={false}
+                    axisLine={false}
+                    interval={4}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 10, fill: '#9CA3AF' }}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      borderRadius: '8px',
+                      border: '1px solid #E5E7EB',
+                      fontSize: '12px',
+                      boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.07)',
+                    }}
+                    formatter={(value: any) => [formatCurrency(Number(value)), 'Revenue']}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="#6F7F5F"
+                    strokeWidth={2}
+                    fill="url(#revenueGrad)"
+                    dot={false}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-[220px] items-center justify-center text-sm text-[#9CA3AF]">
+                No revenue data available
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -219,28 +201,37 @@ export default function DashboardPage() {
             <span className="text-xs text-[#9CA3AF]">This month</span>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={categoryData} layout="vertical" margin={{ left: 0, right: 8, top: 0, bottom: 0 }}>
-                <XAxis type="number" tick={{ fontSize: 10, fill: '#9CA3AF' }} tickLine={false} axisLine={false} />
-                <YAxis
-                  type="category"
-                  dataKey="name"
-                  tick={{ fontSize: 11, fill: '#374151' }}
-                  tickLine={false}
-                  axisLine={false}
-                  width={70}
-                />
-                <Tooltip
-                  contentStyle={{ borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '12px' }}
-                  formatter={(v: any) => [v, 'Bookings']}
-                />
-                <Bar dataKey="bookings" radius={[0, 4, 4, 0]} maxBarSize={16}>
-                  {categoryData.map((entry) => (
-                    <Cell key={entry.name} fill={entry.color} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+            {/* @ts-ignore */}
+            {stats?.categoryData?.length > 0 ? (
+              <ResponsiveContainer width="100%" height={220}>
+                {/* @ts-ignore */}
+                <BarChart data={stats.categoryData} layout="vertical" margin={{ left: 0, right: 8, top: 0, bottom: 0 }}>
+                  <XAxis type="number" tick={{ fontSize: 10, fill: '#9CA3AF' }} tickLine={false} axisLine={false} />
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    tick={{ fontSize: 11, fill: '#374151' }}
+                    tickLine={false}
+                    axisLine={false}
+                    width={70}
+                  />
+                  <Tooltip
+                    contentStyle={{ borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '12px' }}
+                    formatter={(v: any) => [v, 'Bookings']}
+                  />
+                  <Bar dataKey="bookings" radius={[0, 4, 4, 0]} maxBarSize={16}>
+                    {/* @ts-ignore */}
+                    {stats.categoryData.map((entry: any) => (
+                      <Cell key={entry.name} fill={entry.color || '#6F7F5F'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-[220px] items-center justify-center text-sm text-[#9CA3AF]">
+                No category data available
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -254,7 +245,7 @@ export default function DashboardPage() {
             <a href="/bookings" className="text-xs text-[#6F7F5F] hover:underline font-medium">View all →</a>
           </CardHeader>
           <CardContent className="pt-0">
-            {bookingsLoading ? (
+            {statsLoading ? (
               <div className="space-y-2">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <div key={i} className="flex items-center gap-3 py-2">
@@ -286,36 +277,23 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="pt-2">
             <div className="space-y-0">
-              <ActivityItem
-                icon={<BookOpen className="h-3.5 w-3.5" />}
-                title="New booking created"
-                description="Electrical — Fan Repair"
-                time="2 min ago"
-              />
-              <ActivityItem
-                icon={<CheckCircle2 className="h-3.5 w-3.5" />}
-                title="Booking completed"
-                description="FH-20260720-0042"
-                time="18 min ago"
-              />
-              <ActivityItem
-                icon={<Wrench className="h-3.5 w-3.5" />}
-                title="Technician verified"
-                description="Rajan Kumar → Verified"
-                time="1 hr ago"
-              />
-              <ActivityItem
-                icon={<CreditCard className="h-3.5 w-3.5" />}
-                title="Payment captured"
-                description="₹899 via UPI"
-                time="2 hr ago"
-              />
-              <ActivityItem
-                icon={<Clock className="h-3.5 w-3.5" />}
-                title="Booking assigned"
-                description="FH-20260720-0039 → Rajan"
-                time="3 hr ago"
-              />
+              {/* @ts-ignore */}
+              {stats?.recentActivity?.length > 0 ? (
+                /* @ts-ignore */
+                stats.recentActivity.map((activity: any, index: number) => (
+                  <ActivityItem
+                    key={index}
+                    icon={<CheckCircle2 className="h-3.5 w-3.5" />}
+                    title={activity.title}
+                    description={activity.description}
+                    time={activity.time}
+                  />
+                ))
+              ) : (
+                <div className="py-8 text-center text-sm text-[#9CA3AF]">
+                  No recent activity
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

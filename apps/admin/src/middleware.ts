@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 
 const publicRoutes = ['/login', '/_next', '/favicon.ico', '/api'];
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Skip Next.js internal paths and static assets
@@ -14,22 +14,29 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const token = request.cookies.get('accessToken')?.value;
+  const accessToken = request.cookies.get('accessToken')?.value;
+  const refreshToken = request.cookies.get('refreshToken')?.value;
   const isAuthRoute = pathname === '/login';
 
-  if (!token && !isAuthRoute) {
+  const hasToken = !!accessToken || !!refreshToken;
+
+  if (!hasToken && !isAuthRoute) {
     // Unauthenticated user trying to access protected route -> redirect to login
     const loginUrl = new URL('/login', request.url);
-    return NextResponse.redirect(loginUrl);
+    const response = NextResponse.redirect(loginUrl);
+    response.cookies.delete('accessToken');
+    response.cookies.delete('refreshToken');
+    return response;
   }
 
-  if (token && isAuthRoute) {
+  if (hasToken && isAuthRoute) {
     // Authenticated user trying to access login -> redirect to dashboard
     const dashboardUrl = new URL('/', request.url);
     return NextResponse.redirect(dashboardUrl);
   }
 
   return NextResponse.next();
+
 }
 
 export const config = {

@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { useBooking, useAssignTechnician } from '@/lib/api/queries/use-bookings';
+import { useBooking, useAssignTechnician, useUpdateNotes, useCancelBooking } from '@/lib/api/queries/use-bookings';
 import { useTechnicians } from '@/lib/api/queries/use-technicians';
 import { bookingStatusLabel, bookingStatusVariant, formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
 import type { BookingStatus, BookingTimeline } from '@/lib/types';
@@ -68,7 +68,7 @@ function AssignTechnicianDialog({
   };
 
   const options = (techData?.items ?? [])
-    .filter((t) => t.isActive && t.verificationStatus === 'APPROVED')
+    .filter((t) => (t.user?.isActive ?? true) && t.verificationStatus === 'VERIFIED')
     .map((t) => ({
       label: `${t.user?.name || 'Unknown'} (${t.user?.phone})`,
       value: t.id,
@@ -84,6 +84,7 @@ function AssignTechnicianDialog({
         ) : (
           <Select
             label="Select Technician"
+            placeholder="Choose a technician..."
             options={options}
             value={selectedTech}
             onChange={(e) => setSelectedTech(e.target.value)}
@@ -108,6 +109,38 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
   const resolvedParams = React.use(params);
   const { data: booking, isLoading } = useBooking(resolvedParams.id);
   const [assignDialogOpen, setAssignDialogOpen] = React.useState(false);
+  const [notes, setNotes] = React.useState('');
+  const updateNotesMutation = useUpdateNotes();
+  const cancelBookingMutation = useCancelBooking();
+
+  React.useEffect(() => {
+    if (booking?.notes) {
+      setNotes(booking.notes);
+    }
+  }, [booking?.notes]);
+
+  const handleSaveNotes = () => {
+    if (!booking) return;
+    updateNotesMutation.mutate(
+      { bookingId: booking.id, notes },
+      {
+        onSuccess: () => toast.success('Notes saved successfully'),
+        onError: () => toast.error('Failed to save notes'),
+      }
+    );
+  };
+
+  const handleCancelBooking = () => {
+    if (!booking) return;
+    if (!confirm('Are you sure you want to cancel this booking?')) return;
+    cancelBookingMutation.mutate(
+      { bookingId: booking.id, reason: 'Cancelled by admin' },
+      {
+        onSuccess: () => toast.success('Booking cancelled successfully'),
+        onError: () => toast.error('Failed to cancel booking'),
+      }
+    );
+  };
 
   if (isLoading) {
     return (
@@ -284,9 +317,18 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
                 className="w-full resize-none rounded-lg border border-[#E5E7EB] bg-[#F8F8F7] px-3 py-2 text-sm text-[#374151] focus:outline-none focus:ring-2 focus:ring-[#6F7F5F33]"
                 rows={4}
                 placeholder="Add internal notes..."
-                defaultValue={booking.notes ?? ''}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
               />
-              <Button size="sm" className="mt-2 w-full" variant="secondary">Save Notes</Button>
+              <Button 
+                size="sm" 
+                className="mt-2 w-full" 
+                variant="secondary"
+                onClick={handleSaveNotes}
+                loading={updateNotesMutation.isPending}
+              >
+                Save Notes
+              </Button>
             </CardContent>
           </Card>
 
@@ -295,9 +337,17 @@ export default function BookingDetailPage({ params }: { params: Promise<{ id: st
             <Card>
               <CardHeader><CardTitle>Actions</CardTitle></CardHeader>
               <CardContent className="space-y-2">
-                <Button variant="secondary" className="w-full" size="sm">Cancel Booking</Button>
+                <Button 
+                  variant="secondary" 
+                  className="w-full" 
+                  size="sm"
+                  onClick={handleCancelBooking}
+                  loading={cancelBookingMutation.isPending}
+                >
+                  Cancel Booking
+                </Button>
                 {booking.payment?.status === 'CAPTURED' && (
-                  <Button variant="danger" className="w-full" size="sm">Process Refund</Button>
+                  <Button variant="danger" className="w-full" size="sm" disabled>Process Refund</Button>
                 )}
               </CardContent>
             </Card>

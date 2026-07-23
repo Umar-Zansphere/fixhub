@@ -5,9 +5,10 @@ import { Role } from '@prisma/client';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { AuthenticatedUser } from '../../../common/interfaces/auth.interface';
-import { AssignTechnicianDto, BookingQueryDto } from '../dto';
+import { AssignTechnicianDto, BookingQueryDto, UpdateNotesDto, UpdateBookingStatusDto } from '../dto';
 import { BookingQueryService } from '../services/booking-query.service';
 import { BookingService } from '../services/booking.service';
+import { BookingLifecycleService } from '../services/booking-lifecycle.service';
 
 @ApiTags('Admin Bookings')
 @ApiBearerAuth()
@@ -17,7 +18,8 @@ export class AdminBookingController {
   constructor(
     private readonly bookingQueryService: BookingQueryService,
     private readonly bookingService: BookingService,
-  ) {}
+    private readonly bookingLifecycleService: BookingLifecycleService,
+  ) { }
 
   @Get()
   @ApiOperation({ summary: 'List all bookings for admin' })
@@ -47,5 +49,31 @@ export class AdminBookingController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.bookingService.assignTechnician(id, dto.technicianId, user);
+  }
+
+  @Patch(':id/notes')
+  @ApiOperation({ summary: 'Update internal notes for a booking' })
+  @ApiParam({ name: 'id', description: 'Booking id' })
+  async updateNotes(
+    @Param('id') id: string,
+    @Body() dto: UpdateNotesDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.bookingService.updateNotes(id, dto.notes, user.userId);
+  }
+
+  @Patch(':id/cancel')
+  @ApiOperation({ summary: 'Cancel a booking manually' })
+  @ApiParam({ name: 'id', description: 'Booking id' })
+  async cancelBooking(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: { reason?: string },
+  ) {
+    const cancelDto = new UpdateBookingStatusDto();
+    cancelDto.status = 'CANCELLED';
+    cancelDto.note = dto.reason;
+    cancelDto.cancelReason = dto.reason;
+    return this.bookingLifecycleService.transition(id, user, cancelDto);
   }
 }

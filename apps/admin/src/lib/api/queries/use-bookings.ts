@@ -46,3 +46,30 @@ export function useAssignTechnician() {
     },
   });
 }
+
+export function useUpdateNotes() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ bookingId, notes }: { bookingId: string; notes: string }) => {
+      const { data } = await apiClient.patch(endpoints.bookings.notes(bookingId), { notes });
+      return data;
+    },
+    onSuccess: (_, { bookingId }) => {
+      queryClient.invalidateQueries({ queryKey: ['booking', bookingId] });
+    },
+  });
+}
+
+export function useCancelBooking() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ bookingId, reason }: { bookingId: string; reason?: string }) => {
+      const { data } = await apiClient.patch(endpoints.bookings.cancel(bookingId), { reason });
+      return data;
+    },
+    onSuccess: (_, { bookingId }) => {
+      queryClient.invalidateQueries({ queryKey: ['bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['booking', bookingId] });
+    },
+  });
+}
